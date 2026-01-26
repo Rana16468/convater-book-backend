@@ -73,7 +73,7 @@ const resetPassword: RequestHandler = catchAsync(async (req, res) => {
 const googleAuth: RequestHandler = catchAsync(async (req, res) => {
   const result = await UserServices.googleAuthIntoDb(req.body);
 
-  const { refreshToken, accessToken } = result;
+  const { refreshToken, accessToken } = result  as any;
   res.cookie("refreshToken", refreshToken, {
     secure: config?.NODE_ENV === "production",
     httpOnly: true,

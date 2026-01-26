@@ -1,17 +1,17 @@
 import mongoose from "mongoose";
-
 import users from "../user/user.model";
 import { USER_ACCESSIBILITY } from "../user/user.constant";
-
 import { jwtHelpers } from "../../helper/jwtHelpers";
 import ApiError from "../../app/error/ApiError";
 import httpStatus from "http-status";
 import config from "../../app/config";
-import { ProfileUpdateResponse, RequestWithFile } from "./auth.interface";
+import {  RequestWithFile } from "./auth.interface";
 import { user_search_filed } from "./auth.constant";
 import QueryBuilder from "../../app/builder/QueryBuilder";
 import { TUser } from "../user/user.interface";
 import { sendFileToCloudinary } from "../../utility/sendFileToCloudinary";
+import catchError from "../../app/error/catchError";
+
 
 // ============== SECURITY CONSTANTS ==============
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -80,12 +80,9 @@ const loginUserIntoDb = async (payload: {
           config.jwt_refresh_secret as string,
           config.refresh_expires_in as string
         );
-      } catch (error:any) {
-        throw new ApiError(
-          httpStatus.INTERNAL_SERVER_ERROR,
-          "Token generation failed",
-          error
-        );
+      } catch (error:unknown) {
+         catchError(error, 'login section issues ,generate jwt issues')
+        
       }
     }
 
@@ -143,24 +140,16 @@ const refreshTokenIntoDb = async (token: string) => {
           config.jwt_access_secret as string,
           config.expires_in as string
         );
-      } catch (error:any) {
-        throw new ApiError(
-          httpStatus.INTERNAL_SERVER_ERROR,
-          "Token generation failed",
-          error
-        );
+      } catch (error:unknown) {
+        catchError(error, "Token generation failed")
       }
     }
 
     return {
       accessToken,
     };
-  } catch (error: any) {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "Invalid or expired refresh token",
-      error
-    );
+  } catch (error: unknown) {
+     catchError(error,'Invalid or expired refresh token');
   }
 };
 
@@ -176,12 +165,8 @@ const myprofileIntoDb = async (id: string) => {
     }
 
     return profile;
-  } catch (error: any) {
-    throw new ApiError(
-      httpStatus.SERVICE_UNAVAILABLE,
-      "Failed to fetch profile",
-      error
-    );
+  } catch (error: unknown) {
+     catchError(error, 'Failed to fetch profile')
   }
 };
 
@@ -189,7 +174,7 @@ const myprofileIntoDb = async (id: string) => {
 const changeMyProfileIntoDb = async (
   req: RequestWithFile,
   id: string
-): Promise<ProfileUpdateResponse> => {
+) => {
   try {
   
 
@@ -202,11 +187,9 @@ const changeMyProfileIntoDb = async (
       name?: string;
       photo?: string;
 
-      phoneNumber?: string;
     } = {};
 
     if (name && name.trim()) {
-      // ✅ SECURITY FIX: Validate non-empty strings
       updateData.name = name.trim();
     }
 
@@ -250,7 +233,7 @@ const changeMyProfileIntoDb = async (
       { $set: { ...updateData } },
       {
         new: true,
-        runValidators: true, // ✅ SECURITY FIX: Run model validators
+        runValidators: true, 
       }
     );
 
@@ -262,16 +245,10 @@ const changeMyProfileIntoDb = async (
       status: true,
       message: "Profile updated successfully",
     };
-  } catch (error: any) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
+  } catch (error: unknown) {
 
-    throw new ApiError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      "Profile update failed",
-      error.message
-    );
+    catchError(error, 'Profile update failed')
+    
   }
 };
 
@@ -307,16 +284,8 @@ const findByAllUsersAdminIntoDb = async (
     const meta = await allUsersdQuery.countTotal();
 
     return { meta, all_users };
-  } catch (error: any) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-
-    throw new ApiError(
-      httpStatus.SERVICE_UNAVAILABLE,
-      "Failed to fetch users",
-      error
-    );
+  } catch (error: unknown) {
+     catchError(error,'Failed to fetch users')
   }
 };
 
@@ -360,16 +329,8 @@ const deleteAccountIntoDb = async (
       success: true,
       message: "Account deleted successfully",
     };
-  } catch (error: any) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-
-    throw new ApiError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      "Account deletion failed",
-      error
-    );
+  } catch (error: unknown) {
+      catchError(error,'Account deletion failed')
   }
 };
 
@@ -425,16 +386,8 @@ const isBlockAccountIntoDb = async (
       success: true,
       message: `User account ${payload.status === USER_ACCESSIBILITY.blocked ? USER_ACCESSIBILITY.blocked : USER_ACCESSIBILITY.isProgress} successfully`,
     };
-  } catch (error: any) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-
-    throw new ApiError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      "Block account operation failed",
-      error
-    );
+  } catch (error: unknown) {
+      catchError(error,'Block account operation failed')
   }
 };
 

@@ -11,14 +11,13 @@ import { jwtHelpers } from '../../helper/jwtHelpers';
 import config from '../../app/config';
 import bcrypt from 'bcrypt';
 import emailContext from '../../utility/emailcontext/sendvarificationData';
+import catchError from '../../app/error/catchError';
 
 
 
  const generateOTP = (): { otp: string; hash: string } => {
-  // 6-digit secure OTP
   const otp = crypto.randomInt(100000, 1000000).toString();
 
-  // Hash OTP before storing
   const hash = crypto
     .createHash("sha256")
     .update(otp)
@@ -71,23 +70,20 @@ const createUserIntoDb = async (payload: TUser) => {
       status: true,
       message: "Check your email for verification code",
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (session.inTransaction()) {
       await session.abortTransaction();
     }
     session.endSession();
 
-    throw new ApiError(
-      error.statusCode || httpStatus.SERVICE_UNAVAILABLE,
-      error.message || "Server unavailable",
-      error
-    );
+    catchError(error, '"Server unavailable create account function ')
   }
 };
 
 
 const userVarificationIntoDb = async (verificationCode: string) => {
-  if (!verificationCode) {
+  try{
+     if (!verificationCode) {
     throw new ApiError(
       httpStatus.BAD_REQUEST,
       "Verification code is required", ""
@@ -132,6 +128,13 @@ const userVarificationIntoDb = async (verificationCode: string) => {
     message: "User verification successful",
     accessToken,
   };
+
+  }
+  catch(error:unknown){
+
+     catchError(error, 'server error by the user Verification Int oDb section ')
+
+  }
 };
 
 const changePasswordIntoDb = async (
@@ -223,17 +226,10 @@ const changePasswordIntoDb = async (
       success: true,
       message: 'Password updated successfully',
     };
-  } catch (error: any) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
+  } catch (error: unknown) {
 
-  
-
-    throw new ApiError(
-      httpStatus.INTERNAL_SERVER_ERROR,
-      'Password change failed', ""
-    );
+    catchError(error, 'Password change failed');
+    
   }
 };
 
@@ -303,14 +299,12 @@ const forgotPasswordIntoDb = async (payload: string | { email: string }) => {
         ),
         'Forgot Password Verification OTP Code',
       );
-    } catch (emailError: any) {
+    } catch (emailError: unknown) {
       await session.abortTransaction();
       session.endSession();
-      throw new ApiError(
-        httpStatus.SERVICE_UNAVAILABLE,
-        'Failed to send verification email',
-        emailError,
-      );
+      catchError(emailError,'Failed to send verification email');
+
+      
     }
 
     await session.commitTransaction();
@@ -318,15 +312,13 @@ const forgotPasswordIntoDb = async (payload: string | { email: string }) => {
 
     return { status: true, message: 'Checked Your Email' };
   } catch (error: any) {
-    await session.abortTransaction();
-    session.endSession();
+  await session.abortTransaction();
+  session.endSession();
 
-    throw new ApiError(
-      httpStatus.SERVICE_UNAVAILABLE,
-      'Password change failed',
-      error,
-    );
-  }
+
+  catchError(error, 'server error by the forgot Password Into Db section ')
+}
+
 };
 
 
@@ -334,7 +326,9 @@ const forgotPasswordIntoDb = async (payload: string | { email: string }) => {
 const verificationForgotUserIntoDb = async (
   payload: { verificationCode: string }
 ): Promise<string> => {
-  const { verificationCode } = payload;
+  try{
+
+    const { verificationCode } = payload;
 
   if (!verificationCode) {
     throw new ApiError(httpStatus.BAD_REQUEST, "OTP is required", "");
@@ -414,6 +408,19 @@ const verificationForgotUserIntoDb = async (
   );
 
   return accessToken;
+
+  }
+  catch(error:unknown){
+   if (error instanceof ApiError) {
+      throw error; 
+    }
+
+    throw new ApiError(
+      httpStatus.SERVICE_UNAVAILABLE,
+      "Verification service temporarily unavailable",
+      ""
+    );
+  }
 };
 
 
@@ -451,12 +458,9 @@ const resetPasswordIntoDb = async (payload: {
       { new: true, upsert: true },
     );
     return result && { status: true, message: 'successfylly reset password' };
-  } catch (error: any) {
-    throw new ApiError(
-      httpStatus.SERVICE_UNAVAILABLE,
-      'server unavailable  reset password into db function',
-      error,
-    );
+  } catch (error: unknown) {
+      
+    catchError(error, 'server unavailable  reset password into db function')
   }
 };
 
@@ -509,11 +513,7 @@ const googleAuthIntoDb = async (payload: TUser) => {
     // If user is not verified
     return { accessToken: null, refreshToken: null };
   } catch (error: any) {
-    throw new ApiError(
-      httpStatus.SERVICE_UNAVAILABLE,
-      error.message || "Google auth failed",
-      error,
-    );
+    catchError(error, 'Google auth failed')
   }
 };
 
@@ -636,7 +636,8 @@ const getUserGrowthIntoDb = async (query: { year?: string }) => {
 
 
 const resendVerificationOtpIntoDb = async (email: string) => {
-  if (!email) {
+  try{
+     if (!email) {
     throw new ApiError(
       httpStatus.BAD_REQUEST,
       "Email is required",""
@@ -695,6 +696,14 @@ const resendVerificationOtpIntoDb = async (email: string) => {
     status: true,
     message: "Verification OTP sent successfully",
   };
+
+  }
+  catch(error: unknown){
+
+    catchError(error, 'server error by the  resend Verification Otp Into Db section ')
+    
+
+  }
 };
 
 const UserServices = {
