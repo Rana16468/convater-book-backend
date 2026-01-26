@@ -1,0 +1,18 @@
+PORT=5010
+DATABASE_URL=mongodb+srv://book_convater:OEY9iedKoXye97gM@cluster0.wqhd5vt.mongodb.net/book_convater
+NODE_ENV=development
+BCRYPT_SALT_ROUNDS=12
+NODEMAILER_EMAIL=amsr215019@gmail.com
+NODEMAILER_PASSWORD=hvyz dkdy azby kyww
+JWT_ACCESS_SECRET=0ab803014b805f51442b4909e5b90e44068499c71ab85cbee51d96911cfae4e2
+EXPIRES_IN=10d
+JWT_REFRESH_SECRET=0ab803014b805f51442b4909e5b90e44068499c71ab85cbee51d96911cfae8f2
+REFRESH_EXPIRES_IN=30d
+FILE_PATH=/src/public
+HOST=localhost
+# username:book_convater
+# password:OEY9iedKoXye97gM
+
+
+
+

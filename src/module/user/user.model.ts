@@ -1,131 +1,137 @@
-import bcrypt from 'bcrypt';
-import { Schema, model } from 'mongoose';
-import config from '../../app/config';
-import { USER_ACCESSIBILITY, USER_ROLE } from './user.constant';
-import { TUser, UserModel } from './user.interface';
 
-const TUserSchema = new Schema<TUser, UserModel>(
-  {
-    name: { type: String, required: [false, 'user name is Required'] },
-    password: { type: String, required: [false, 'Password is Required'] },
+
+import { Schema, model } from "mongoose";
+import { TUser, UserModel } from "./user.interface";
+import { USER_ACCESSIBILITY, USER_ROLE } from "./user.constant";
+import bcrypt from "bcrypt";
+import config from "../../app/config";
+
+// Define the TSales schema
+const TUserSchema = new Schema<TUser, UserModel>({
+
+    name: {
+        type: String,
+        required: [true, 'name is Required']
+    },
     email: {
-      type: String,
-      required: [false, 'Email is Required'],
-      trim: true,
-      unique: true,
+        type: String,
+        index: true,
+        required: [false, 'Email is Not Required']
     },
-    phoneNumber: {
-      type: String,
-      required: [false, 'phone number is required'],
-      unique: true,
-    },
-    verificationCode: {
-      type: Number,
-      required: [false, 'verification Code is Required'],
-      unique: true,
-    },
-    isVerify: {
-      type: Boolean,
-      required: [false, 'isVartify is not required'],
-      default: false,
-    },
-    role: {
-      type: String,
-      enum: {
-        values: [USER_ROLE.admin, USER_ROLE.user],
-        message: '{VALUE} is Not Required',
-      },
-      required: [true, 'Role is Required'],
-      default: USER_ROLE.user,
-    },
-    status: {
-      type: String,
-      enum: {
-        values: [USER_ACCESSIBILITY.isProgress, USER_ACCESSIBILITY.blocked],
-        message: '{VALUE} is not required',
-      },
-      required: [true, 'Status is Required'],
-      default: USER_ACCESSIBILITY.isProgress as any,
+    password: {
+        type: String,
+        required: [true, 'password is Required'], select: 0
     },
     photo: {
-      type: String,
-      required: [false, 'photo is not required'],
-      default: null,
+        type: String,
+        required: [false, 'photo is Required'],
+        default: null
+    },
+    role: {
+        type: String,
+        enum: {
+            values: [USER_ROLE.shop, USER_ROLE.user, USER_ROLE.admin, USER_ROLE.superAdmin],
+            message: '{VALUE} is Not Required'
+        },
+        index: true,
+        default: USER_ROLE.user
+    },
+    status: {
+        type: String,
+        enum: {
+            values: [USER_ACCESSIBILITY.isProgress, USER_ACCESSIBILITY.blocked],
+            message: '{VALUE} is Not Required'
+        },
+        index: true,
+        default: USER_ACCESSIBILITY.isProgress
+
+    },
+    os: {
+        type: String,
+        required: [false, 'os is Required'],
+        default: null
+
+    },
+    browser: {
+        type: String,
+        require: [false, 'browser is Required'],
+        default: null
+    },
+    device: {
+        type: String,
+        require: [false, 'device is required'],
+        default: null
+    },
+    isVerify: {
+        type: Boolean,
+        required: [false, 'Is Verify is required'],
+        index: true,
+
+    },
+    verificationCode: {
+        type: String,
+        required: [false, 'verificationCode code is required'],
+        index: true,
+    },
+    ipAddress: {
+        type: String,
+        index: true,
+        required: [false, 'Is Verify is required'],
+        default: null
     },
 
-    stripeAccountId: {
-      type: String,
-      required: false,
-    },
-    isStripeConnected: {
-      type: Boolean,
-      rquired: false,
-      default: false,
-    },
-    address: {
-      type: String,
-      required: [false, 'address is not required'],
-    },
-    fcm: {
-      type: String,
-      required: [false, 'fcm is not  required'],
-      default: null,
-    },
+
     isDelete: {
-      type: Boolean,
-      required: [true, 'isDeleted is Required'],
-      default: false,
-    },
-  },
-  {
-    timestamps: true,
-    versionKey: false,
-  },
-);
+        type: Boolean,
+        required: [false, 'isDelete  is not required'],
+        default: false
+    }
 
-TUserSchema.set('toJSON', {
-  virtuals: true,
-  transform: function (doc, ret) {
-    delete ret.password;
-    return ret;
-  },
+}, {
+    timestamps: true
 });
 
+TUserSchema.set('toJSON', {
+    virtuals: true,
+    transform: function (doc, ret) {
+        delete ret.password;
+        return ret;
+    },
+});
 // mongoose middleware
-TUserSchema.pre('save', async function (next) {
+TUserSchema.pre("save", async function (next) {
   const user = this;
-  if (user.isModified('password')) {
+  if (user.isModified("password")) {
     user.password = await bcrypt.hash(
       user.password,
-      Number(config.bcrypt_salt_rounds),
+      Number(config.bcrypt_salt_rounds)
     );
   }
   next();
 });
 
-TUserSchema.post('save', function (doc, next) {
-  doc.password = '';
+TUserSchema.post("save", function (doc, next) {
+  doc.password = "";
   next();
 });
 
+
+// midlewere 
 TUserSchema.pre('find', function (next) {
-  this.find({ isDelete: { $ne: true } });
-  next();
+    this.find({ isDelete: { $ne: true } })
+    next();
 });
-
 TUserSchema.pre('aggregate', function (next) {
-  this.pipeline().unshift({ $match: { isDelete: { $ne: true } } });
-  next();
-});
 
+    this.pipeline().unshift({ $match: { isDelete: { $ne: true } } })
+    next();
+});
 TUserSchema.pre('findOne', function (next) {
-  this.findOne({ isDelete: { $ne: true } });
-  next();
-});
 
-TUserSchema.statics.isUserExistByCustomId = async function (id: string) {
-  return await users.findOne({ id });
-};
+    this.find({ isDelete: { $ne: true } })
+
+    next();
+});
 
 TUserSchema.statics.isPasswordMatched = async function (
   plainTextPassword: string,
@@ -142,6 +148,14 @@ TUserSchema.statics.isJWTIssuesBeforePasswordChange = async function (
   const passwordChangeTime = new Date(passwordChangeTimestamp).getTime() / 1000;
   return passwordChangeTime > jwtIssuesTime;
 };
+
+
+
+TUserSchema.statics.isUserExistByCustomId = async function (id: string) {
+    return await users.findById(id).select("");
+}
+
+// Export the model
 
 const users = model<TUser, UserModel>('users', TUserSchema);
 

@@ -1,80 +1,88 @@
-//await mongoose.connect('mongodb://127.0.0.1:27017/test');
-import { Server } from 'http';
-import mongoose from 'mongoose';
-import app from './app';
-import config from './app/config';
-import ApiError from './app/error/ApiError';
-import httpStatus from 'http-status';
+import http, { Server } from "http";
+import mongoose from "mongoose";
+import app from "./app";
+import config from "./app/config";
+
+import httpStatus from "http-status";
+import ApiError from "./app/error/ApiError";
 
 
 let server: Server;
 
+// prevent listener leak warnings
+require("events").EventEmitter.defaultMaxListeners = 20;
+
+// ==============================
+// Global graceful shutdown handlers
+// ==============================
+
+// Handle unexpected promise rejections
+process.on("unhandledRejection", (error) => {
+  console.error("Unhandled Rejection:", error);
+  shutdownServer(1);
+});
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  shutdownServer(1);
+});
+
+// Handle OS signals (Manual server stop) - PM2
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received");
+  shutdownServer(0);
+});
+
+process.on("SIGINT", () => {
+  console.log("SIGINT received");
+  shutdownServer(0);
+});
+
+
+// ==============================
+// Main Function
+// ==============================
 async function main() {
   try {
     await mongoose.connect(config.database_url as string);
-    console.log('database connected succesfully');
+    console.log("Database connected successfully");
 
     server = app.listen(config.port, () => {
-      console.log(`navuboy app listening on port ${config.port}`);
+      console.log(`🚀 Server running on http://${config.host}:${config.port}`);
     });
-
-    process.on('unhandledRejection', () => {
-      if (server) {
-        server.close(() => {
-          process.exit(1);
-        });
-      } else {
-        process.exit(1);
-      }
-    });
-
-    process.on('uncaughtException', () => {
-      if (server) {
-        server.close(() => {
-          process.exit(1);
-        });
-      } else {
-        process.exit(1);
-      }
-    });
+    // Initialize Socket only once
    
-    process.on('SIGTERM', () => {
-      console.log('SIGTERM received');
-      if (server) {
-        server.close(() => {
-          console.log('Server closed due to SIGTERM');
-          process.exit(0);
-        });
-      } else {
-        process.exit(0);
-      }
-    });
 
-    process.on('SIGINT', () => {
-      console.log('SIGINT received');
-      if (server) {
-        server.close(() => {
-          console.log('Server closed due to SIGINT');
-          process.exit(0);
-        });
-      } else {
-        process.exit(0);
-      }
-    });
 
-    // connectSocket(server)
-    
-  } catch (err: any) {
+  } catch (error: any) {
     throw new ApiError(
       httpStatus.SERVICE_UNAVAILABLE,
-      'server unavailable',
-      err,
+      "Server unavailable",
+      error
     );
   }
 }
 
 
-main().then(() => {
-  console.log('-- Navyboy server is running---');
-});
+// =================================
+// Unified graceful shutdown function
+// =================================
+function shutdownServer(exitCode: number) {
+  if (server) {
+    server.close(() => {
+      console.log("Server closed");
+      process.exit(exitCode);
+    });
+  } else {
+    process.exit(exitCode);
+  }
+}
 
+
+// ==============================
+// Start server
+// ==============================
+main().then(() => {
+  console.log("--- thefrank sims Server is running ---");
+});

@@ -14,4 +14,6 @@ export default {
   expires_in: process.env.EXPIRES_IN,
   jwt_refresh_secret: process.env.JWT_REFRESH_SECRET,
   refresh_expires_in: process.env.REFRESH_EXPIRES_IN,
+  host: process.env.HOST,
+  file_path:process.env.FILE_PATH
 };

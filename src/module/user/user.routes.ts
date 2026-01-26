@@ -10,6 +10,11 @@ router.post(
   validationRequest(UserValidationSchema.createUserZodSchema),
   UserController.createUser,
 );
+router.patch(
+  "/user_verification",
+  validationRequest(UserValidationSchema.UserVerification),
+  UserController.userVarification
+);
 
 const UserRouters = router;
 export default UserRouters;
