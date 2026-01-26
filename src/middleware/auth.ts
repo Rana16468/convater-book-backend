@@ -51,7 +51,7 @@ const auth = (...requireRoles: TUserRole[]) => {
         );
       }
       if (requireRoles && !requireRoles.includes(role)) {
-        throw new ApiError(httpStatus.UNAUTHORIZED, 'Yout Role Not Exist', '');
+        throw new ApiError(httpStatus.UNAUTHORIZED, 'Your Role Not Exist', '');
       }
       req.user = decoded as JwtPayload;
 

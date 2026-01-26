@@ -12,6 +12,7 @@ import config from '../../app/config';
 import bcrypt from 'bcrypt';
 import emailContext from '../../utility/emailcontext/sendvarificationData';
 import catchError from '../../app/error/catchError';
+import cryptoUtils from '../../utility/cryptoUtils/cryptoUtils';
 
 
 
@@ -96,7 +97,7 @@ const userVarificationIntoDb = async (verificationCode: string) => {
     .digest("hex");
 
   const user = await users.findOneAndUpdate({
-    verificationCode: hashedCode,
+    verificationCode: hashedCode
     
   },{isVerify:true},{new:true , upsert:true});
 
@@ -466,6 +467,9 @@ const resetPasswordIntoDb = async (payload: {
 
 const googleAuthIntoDb = async (payload: TUser) => {
   try {
+
+//...cryptoUtils.generateKeyPair()
+    console.log(cryptoUtils.generateKeyPair())
    
     let user = await users.findOne(
       {
