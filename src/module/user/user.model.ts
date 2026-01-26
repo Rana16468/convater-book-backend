@@ -2,7 +2,7 @@
 
 import { Schema, model } from "mongoose";
 import { TUser, UserModel } from "./user.interface";
-import { USER_ACCESSIBILITY, USER_ROLE } from "./user.constant";
+import { PROVIDER_AUTH, USER_ACCESSIBILITY, USER_ROLE } from "./user.constant";
 import bcrypt from "bcrypt";
 import config from "../../app/config";
 
@@ -20,7 +20,7 @@ const TUserSchema = new Schema<TUser, UserModel>({
     },
     password: {
         type: String,
-        required: [true, 'password is Required'], select: 0
+        required: [false, 'password is Required'], select: 0
     },
     photo: {
         type: String,
@@ -29,6 +29,7 @@ const TUserSchema = new Schema<TUser, UserModel>({
     },
     role: {
         type: String,
+        required:[true , 'role is required'],
         enum: {
             values: [USER_ROLE.shop, USER_ROLE.user, USER_ROLE.admin, USER_ROLE.superAdmin],
             message: '{VALUE} is Not Required'
@@ -38,12 +39,25 @@ const TUserSchema = new Schema<TUser, UserModel>({
     },
     status: {
         type: String,
+        required:[true, "status is required"],
         enum: {
             values: [USER_ACCESSIBILITY.isProgress, USER_ACCESSIBILITY.blocked],
             message: '{VALUE} is Not Required'
         },
         index: true,
         default: USER_ACCESSIBILITY.isProgress
+
+    },
+    provider:{
+        type:String,
+        required:[false , "provider is not required"],
+        enum:{
+            values:[PROVIDER_AUTH.googleAuth],
+             message: '{VALUE} is Not Required'
+        },
+        index: true,
+        default: null
+
 
     },
     os: {
@@ -66,6 +80,7 @@ const TUserSchema = new Schema<TUser, UserModel>({
         type: Boolean,
         required: [false, 'Is Verify is required'],
         index: true,
+        default : false
 
     },
     verificationCode: {
@@ -90,6 +105,8 @@ const TUserSchema = new Schema<TUser, UserModel>({
 }, {
     timestamps: true
 });
+
+
 
 TUserSchema.set('toJSON', {
     virtuals: true,

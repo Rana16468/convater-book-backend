@@ -10,4 +10,8 @@ export const USER_ROLE = {
     isProgress:'isProgress',
     blocked:'blocked'
   }  as const;
+
+  export const PROVIDER_AUTH={
+    googleAuth:"googleAuth"
+  }
   

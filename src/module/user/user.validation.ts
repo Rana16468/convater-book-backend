@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import {  USER_ROLE } from './user.constant';
+import {  PROVIDER_AUTH, USER_ROLE } from './user.constant';
 
 const createUserZodSchema = z.object({
   body: z.object({
@@ -14,7 +14,7 @@ const createUserZodSchema = z.object({
 
     password: z
       .string({ required_error: "Password is required" })
-      .min(6, "Password must be at least 6 characters"),
+      .min(6, "Password must be at least 6 characters").optional(),
 
     photo: z
       .string({required_error:"photo is not required"})
@@ -31,6 +31,13 @@ const createUserZodSchema = z.object({
         }
       )
       .default(USER_ROLE.user),
+      provider: z.enum(  Object.values(PROVIDER_AUTH) as [
+          (typeof PROVIDER_AUTH)[keyof typeof PROVIDER_AUTH],
+          ...(typeof PROVIDER_AUTH)[keyof typeof PROVIDER_AUTH][]
+        ],
+        {
+          invalid_type_error: "Invalid role value",
+        }),
 
     os: z.string().optional().nullable(),
 
@@ -56,7 +63,7 @@ const UserVerification = z.object({
   }),
 });
 
-const ChnagePasswordSchema = z.object({
+const ChangePasswordSchema = z.object({
   body: z.object({
     newpassword: z
       .string({ required_error: 'new password is required' })
@@ -97,7 +104,7 @@ const ForgotPasswordSchema = z.object({
 const verificationCodeSchema = z.object({
   body: z.object({
     verificationCode: z
-      .number({ required_error: ' verificationCode is require' })
+      .string({ required_error: ' verificationCode is require' })
       .min(4, { message: 'min 4  number accepted' }),
   }),
 });
@@ -112,7 +119,7 @@ const resetPasswordSchema = z.object({
 const UserValidationSchema = {
   createUserZodSchema,
   UserVerification,
-  ChnagePasswordSchema,
+  ChangePasswordSchema,
   UpdateUserProfileSchema,
   ForgotPasswordSchema,
   verificationCodeSchema,

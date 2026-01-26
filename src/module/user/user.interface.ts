@@ -11,6 +11,7 @@ export type TUser = {
   photo?: string,
   role?: 'USER' | 'SHOP' | 'ADMIN',
   status:"isProgress" | "blocked"
+  provider?:"googleAuth"
   os: string,
   browser: string,
   creationTime: string,

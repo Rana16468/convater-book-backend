@@ -3,7 +3,7 @@ import ApiError from '../../app/error/ApiError';
 import emailcontext from '../../utility/emailcontext/sendvarificationData';
 import sendEmail from '../../utility/sendEmail';
 import users from './user.model';
-import { USER_ACCESSIBILITY } from './user.constant';
+import { PROVIDER_AUTH, USER_ACCESSIBILITY } from './user.constant';
 import { TUser } from './user.interface';
 import mongoose from 'mongoose';
 import crypto from "crypto";
@@ -134,58 +134,88 @@ const userVarificationIntoDb = async (verificationCode: string) => {
   };
 };
 
-const chnagePasswordIntoDb = async (
+const changePasswordIntoDb = async (
   payload: {
-    newpassword: string;
     oldpassword: string;
+    newpassword: string;
   },
-  id: string,
+  userId: string,
 ) => {
   try {
-    const isUserExist = await users.findOne(
-      {
-        $and: [
-          { _id: id },
-          { isVerify: true },
-          { status: USER_ACCESSIBILITY.isProgress },
-          
-        ],
-      },
-      { password: 1 },
+   
+    const user = await users
+      .findOne(
+        {
+          _id: userId,
+          isVerify: true,
+          status: USER_ACCESSIBILITY.isProgress,
+        },
+        { password: 1 },
+      )
+      .lean();
+
+    if (!user) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'User not found', "");
+    }
+      if(user && user?.password && user?.provider?.includes(PROVIDER_AUTH.googleAuth)){
+     throw new ApiError(httpStatus.NOT_EXTENDED, 'social media authentication use can not access resend otp','')
+  }
+
+
+   
+    const isOldPasswordValid = await users.isPasswordMatched(
+      payload.oldpassword,
+      user.password,
     );
 
-    if (!isUserExist) {
-      throw new ApiError(httpStatus.NOT_FOUND, 'User not found', '');
-    }
-
-    if (
-      !(await users.isPasswordMatched(
-        payload.oldpassword,
-        isUserExist?.password,
-      ))
-    ) {
+    if (!isOldPasswordValid) {
       throw new ApiError(
         httpStatus.FORBIDDEN,
-        'Old password does not match',
-        '',
+        'Old password does not match', ""
       );
     }
 
-    const newHashedPassword = await bcrypt.hash(
+
+    const isSamePassword = await bcrypt.compare(
+      payload.newpassword,
+      user.password,
+    );
+
+    if (isSamePassword) {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        'New password must be different from old password', ""
+      );
+    }
+
+    const passwordRegex =
+      /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
+
+    if (!passwordRegex.test(payload.newpassword)) {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        'Password must be at least 8 characters and include letters, numbers, and symbols', ""
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(
       payload.newpassword,
       Number(config.bcrypt_salt_rounds),
     );
 
-    const updatedUser = await users.findByIdAndUpdate(
-      id,
-      { password: newHashedPassword },
-      { new: true, upsert: true },
+    const updated = await users.findByIdAndUpdate(
+      userId,
+      {
+        password: hashedPassword,
+        createdAt: new Date(), 
+      },
+      { new: true }, 
     );
-    if (!updatedUser) {
+
+    if (!updated) {
       throw new ApiError(
-        httpStatus.FORBIDDEN,
-        'password  change database error',
-        '',
+        httpStatus.INTERNAL_SERVER_ERROR,
+        'Failed to update password', ""
       );
     }
 
@@ -194,10 +224,15 @@ const chnagePasswordIntoDb = async (
       message: 'Password updated successfully',
     };
   } catch (error: any) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+  
+
     throw new ApiError(
-      httpStatus.SERVICE_UNAVAILABLE,
-      'Password change failed',
-      error,
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Password change failed', ""
     );
   }
 };
@@ -227,13 +262,17 @@ const forgotPasswordIntoDb = async (payload: string | { email: string }) => {
           { status: USER_ACCESSIBILITY.isProgress },
         ],
       },
-      { _id: 1, provider: 1 },
+      { _id: 1, provider: 1, password:1 },
       { session },
     );
 
     if (!isExistUser) {
       throw new ApiError(httpStatus.NOT_FOUND, 'User not found', '');
-    }
+    };
+
+          if(isExistUser && isExistUser?.password && isExistUser?.provider?.includes(PROVIDER_AUTH.googleAuth)){
+     throw new ApiError(httpStatus.NOT_EXTENDED, 'social media authentication use can not access forgot password api','')
+  }
 
     const { otp, hash } = generateOTP();
 
@@ -293,25 +332,22 @@ const forgotPasswordIntoDb = async (payload: string | { email: string }) => {
 
 
 const verificationForgotUserIntoDb = async (
-  otp: string
+  payload: { verificationCode: string }
 ): Promise<string> => {
-  if (!otp) {
-    throw new ApiError(
-      httpStatus.BAD_REQUEST,
-      "OTP is required", ""
-    );
+  const { verificationCode } = payload;
+
+  if (!verificationCode) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "OTP is required", "");
   }
 
-  // Hash incoming OTP
   const hashedCode = crypto
     .createHash("sha256")
-    .update(otp)
+    .update(verificationCode)
     .digest("hex");
 
   const user = await users.findOne(
     {
       verificationCode: hashedCode,
-      verificationCodeExpiresAt: { $gt: new Date() },
       isVerify: true,
       status: USER_ACCESSIBILITY.isProgress,
     },
@@ -319,15 +355,41 @@ const verificationForgotUserIntoDb = async (
       _id: 1,
       email: 1,
       role: 1,
+       updatedAt:1
+    
     }
-  );
+  ) as any;
+
+        if(user && user?.password && user?.provider?.includes(PROVIDER_AUTH.googleAuth)){
+     throw new ApiError(
+      httpStatus.FORBIDDEN,
+      "Social login users cannot reset password using OTP", ""
+    );
+  };
 
   if (!user) {
     throw new ApiError(
       httpStatus.UNAUTHORIZED,
-      "Invalid or expired OTP",""
+      "Invalid or expired OTP",
+      ""
     );
-  }
+  };
+
+  const updatedAt =
+       user.updatedAt instanceof Date
+        ?  user.updatedAt.getTime()
+        : new Date( user.updatedAt).getTime();
+
+    const now = Date.now();
+    const FIVE_MINUTES = 5 * 60 * 1000;
+
+    if (now - updatedAt > FIVE_MINUTES) {
+      throw new ApiError(
+        httpStatus.FORBIDDEN,
+        'OTP has expired. Please request a new one.',
+        '',
+      );
+    }
 
   const jwtPayload = {
     id: user._id.toString(),
@@ -341,7 +403,6 @@ const verificationForgotUserIntoDb = async (
     config.expires_in as string
   );
 
-  // One-time OTP (invalidate immediately)
   await users.updateOne(
     { _id: user._id },
     {
@@ -356,6 +417,7 @@ const verificationForgotUserIntoDb = async (
 };
 
 
+
 const resetPasswordIntoDb = async (payload: {
   userId: string;
   password: string;
@@ -366,7 +428,6 @@ const resetPasswordIntoDb = async (payload: {
         $and: [
           { _id: payload.userId },
           { isVerify: true },
-          { isDelete: false },
           { status: USER_ACCESSIBILITY.isProgress },
         ],
       },
@@ -407,8 +468,13 @@ const googleAuthIntoDb = async (payload: TUser) => {
         email: payload.email,
         isVerify: true,
       },
-      { _id: 1, role: 1, email: 1, isVerify: 1, },
+      { _id: 1, role: 1, email: 1, isVerify: 1, password:1  },
     );
+
+    if(user && user.password){
+
+        throw new ApiError(httpStatus.FOUND, "this user alrady exist in this system ", "");
+    }
 
     let jwtPayload;
 
@@ -437,10 +503,6 @@ const googleAuthIntoDb = async (payload: TUser) => {
         config.jwt_refresh_secret as string,
         config.refresh_expires_in as string,
       );
-
-
-
-
       return { accessToken, refreshToken };
     }
 
@@ -585,9 +647,10 @@ const resendVerificationOtpIntoDb = async (email: string) => {
   const user = await users.findOne(
     {
       email,
+      isVerify:true,
       status: USER_ACCESSIBILITY.isProgress,
     },
-    { _id: 1, isVerify: 1 }
+    { _id: 1, isVerify: 1, password:1, provider:1 }
   );
 
   if (!user) {
@@ -597,6 +660,10 @@ const resendVerificationOtpIntoDb = async (email: string) => {
     );
   }
 
+  if(user && user?.password && user?.provider?.includes(PROVIDER_AUTH.googleAuth)){
+     throw new ApiError(httpStatus.NOT_EXTENDED, 'social media authentication use can not access resend otp','')
+  }
+
   if (user.isVerify) {
     return {
       status: false,
@@ -604,10 +671,7 @@ const resendVerificationOtpIntoDb = async (email: string) => {
     };
   }
 
-  // 2️⃣ Generate OTP
   const { otp, hash } = generateOTP();
-
-  // 3️⃣ Update OTP + expiry (invalidate old one)
   await users.updateOne(
     { _id: user._id },
     {
@@ -641,7 +705,7 @@ const UserServices = {
   googleAuthIntoDb,
   resetPasswordIntoDb,
   verificationForgotUserIntoDb,
-  chnagePasswordIntoDb,
+  changePasswordIntoDb,
   forgotPasswordIntoDb,
 
 
