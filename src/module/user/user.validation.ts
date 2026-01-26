@@ -58,7 +58,7 @@ const createUserZodSchema = z.object({
 const UserVerification = z.object({
   body: z.object({
     verificationCode: z
-      .string({ required_error: 'varification code is required' })
+      .string({ required_error: 'verification code is required' })
       .min(6, { message: 'min 6 character accepted' }),
   }),
 });

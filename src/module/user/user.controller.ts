@@ -1,13 +1,14 @@
 import { RequestHandler } from 'express';
 import catchAsync from '../../utility/catchAsync';
 import UserServices from './user.services';
-import sendRespone from '../../utility/sendRespone';
+
 import httpStatus from 'http-status';
 import config from '../../app/config';
+import sendResponse from '../../utility/sendResponse';
 
 const createUser: RequestHandler = catchAsync(async (req, res) => {
   const result = await UserServices.createUserIntoDb(req.body);
-  sendRespone(res, {
+ sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: 'Successfully Change Onboarding Status',
@@ -19,7 +20,7 @@ const userVarification: RequestHandler = catchAsync(async (req, res) => {
   const result = await UserServices.userVarificationIntoDb(
     req.body.verificationCode
   );
-  sendRespone(res, {
+ sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: "Successfully Varified Your Account",
@@ -32,7 +33,7 @@ const userVarification: RequestHandler = catchAsync(async (req, res) => {
 
 const changePassword: RequestHandler = catchAsync(async (req, res) => {
   const result = await UserServices.changePasswordIntoDb(req.body, req.user.id);
-  sendRespone(res, {
+ sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: "Successfully Change Password",
@@ -42,7 +43,7 @@ const changePassword: RequestHandler = catchAsync(async (req, res) => {
 
 const forgotPassword: RequestHandler = catchAsync(async (req, res) => {
   const result = await UserServices.forgotPasswordIntoDb(req.body);
-  sendRespone(res, {
+ sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: "Successfully Send Email",
@@ -52,7 +53,7 @@ const forgotPassword: RequestHandler = catchAsync(async (req, res) => {
 
 const verificationForgotUser: RequestHandler = catchAsync(async (req, res) => {
   const result = await UserServices.verificationForgotUserIntoDb(req.body);
-  sendRespone(res, {
+ sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: "Successfully Verify User",
@@ -62,7 +63,7 @@ const verificationForgotUser: RequestHandler = catchAsync(async (req, res) => {
 
 const resetPassword: RequestHandler = catchAsync(async (req, res) => {
   const result = await UserServices.resetPasswordIntoDb(req.body);
-  sendRespone(res, {
+ sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: "Successfully Reset Password",
@@ -78,7 +79,7 @@ const googleAuth: RequestHandler = catchAsync(async (req, res) => {
     secure: config?.NODE_ENV === "production",
     httpOnly: true,
   });
-  sendRespone(res, {
+ sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: "Successfully Login",
@@ -92,7 +93,7 @@ const googleAuth: RequestHandler = catchAsync(async (req, res) => {
 const getUserGrowth: RequestHandler = catchAsync(async (req, res) => {
 
   const result = await UserServices.getUserGrowthIntoDb(req.query);
-  sendRespone(res, {
+ sendResponse(res, {
     success: true,
     statusCode: httpStatus.OK,
     message: "Successfully  Find User Growth",
@@ -105,7 +106,7 @@ const getUserGrowth: RequestHandler = catchAsync(async (req, res) => {
 const resendVerificationOtp:RequestHandler=catchAsync(async(req , res)=>{
 
      const result=await UserServices.resendVerificationOtpIntoDb(req.params.email);
-      sendRespone(res, {
+     sendResponse(res, {
       success: true,
       statusCode: httpStatus.OK,
       message: "Successfully  Resend Verification OTP",
