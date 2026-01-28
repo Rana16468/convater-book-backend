@@ -12,6 +12,7 @@ import { TUser } from "../user/user.interface";
 import { sendFileToCloudinary } from "../../utility/sendFileToCloudinary";
 import catchError from "../../app/error/catchError";
 import profileEncrypted from "../../utility/cryptoUtils/profileEncrypted";
+import deleteFileFromCloudinary from "../../utility/deleteFileFromCloudinary";
 
 
 // ============== SECURITY CONSTANTS ==============
@@ -204,88 +205,48 @@ const myprofileIntoDb = async (id: string) => {
 };
 
 // ============== UPDATE PROFILE SERVICE ==============
-const changeMyProfileIntoDb = async (
-  req: RequestWithFile,
-  id: string
-) => {
+const changeMyProfileIntoDb = async (req: any, id: string) => {
   try {
-  
-
     const file = req.file;
-    const { name } = req.body as {
-      name?: string;
-    };
+    const { name } = req.body;
+    const updateData: any = {};
 
-    const updateData: {
-      name?: string;
-      photo?: string;
+    const existingUser = await users.findById(id).select("photo");
 
-    } = {};
+    if (!existingUser) {
+      throw new ApiError(httpStatus.NOT_FOUND, "User not found", "");
+    }
 
-    if (name && name.trim()) {
+    if (name) {
       updateData.name = name.trim();
     }
 
     if (file) {
-
-      if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-        throw new ApiError(
-          httpStatus.BAD_REQUEST,
-          "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed",
-          ""
-        );
+      if (existingUser.photo) {
+        const oldPhotoUrl = profileEncrypted.decryptPhoto(existingUser.photo);
+        await deleteFileFromCloudinary(oldPhotoUrl);
       }
 
-      if (file.size > MAX_FILE_SIZE) {
-        throw new ApiError(
-          httpStatus.BAD_REQUEST,
-          "File size exceeds 5MB limit",
-          ""
-        );
-      }
+      const path = file.path.replace(/\\/g, "/");
+      const imageName = `profile_${Date.now()}`;
 
-       const path=file?.path?.replace(/\\/g, "/");
-      const randomNumber = Math.floor(10000 + Math.random() * 90000);
-      const imageName=`${`${`book`}${randomNumber}`.trim()}`;
-      
-        const  {secure_url}= await sendFileToCloudinary(imageName,path)
-         console.log(secure_url)
-        updateData.photo = profileEncrypted.encryptPhoto(secure_url);
-        console.log( updateData.photo);
-
-
-
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      throw new ApiError(
-        httpStatus.BAD_REQUEST,
-        "No valid data provided for update",
-        ""
-      );
+      const { secure_url } = await sendFileToCloudinary(imageName, path);
+      updateData.photo = profileEncrypted.encryptPhoto(secure_url);
     }
 
     const result = await users.findByIdAndUpdate(
       id,
-      { $set: { ...updateData } },
-      {
-        new: true,
-        runValidators: true, 
-      }
+      { $set: updateData },
+      { new: true }
     );
 
-    if (!result) {
-      throw new ApiError(httpStatus.NOT_FOUND, "User not found", "");
-    }
-
     return {
-      status: true,
-      message: "Profile updated successfully",
+      success: true,
+      message: "Profile updated successfully"
+     
     };
-  } catch (error: unknown) {
-
-    catchError(error, 'Profile update failed')
-    
+  } catch (error) {
+    throw error;
   }
 };
 

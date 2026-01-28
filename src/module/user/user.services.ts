@@ -13,6 +13,7 @@ import bcrypt from 'bcrypt';
 import emailContext from '../../utility/emailcontext/sendvarificationData';
 import catchError from '../../app/error/catchError';
 import cryptoUtils from '../../utility/cryptoUtils/cryptoUtils';
+import profileEncrypted from '../../utility/cryptoUtils/profileEncrypted';
 
 
 
@@ -269,10 +270,10 @@ const forgotPasswordIntoDb = async (payload: string | { email: string }) => {
     };
 
           if(isExistUser && isExistUser?.password && isExistUser?.provider?.includes(PROVIDER_AUTH.googleAuth)){
-     throw new ApiError(httpStatus.NOT_EXTENDED, 'social media authentication use can not access forgot password api','')
-  }
+                 throw new ApiError(httpStatus.NOT_EXTENDED, 'social media authentication use can not access forgot password api','')
+            }
 
-    const { otp, hash } = generateOTP();
+      const { otp, hash } = generateOTP();
 
     
 
@@ -474,15 +475,19 @@ const googleAuthIntoDb = async (payload: TUser) => {
         email: payload.email,
         isVerify: true,
       },
-      { _id: 1, role: 1, email: 1, isVerify: 1, password:1  },
-    );
+      { _id: 1, role: 1, email: 1, isVerify: 1, password:1, photo:1  },
+    ) as any;
     
 
     if(user && user.password){
 
-        throw new ApiError(httpStatus.FOUND, "this user alrady exist in this system ", "");
+        throw new ApiError(httpStatus.FOUND, "this user already exist in this system ", "");
+    };
+    if(user && user?.photo){
+          payload.photo=profileEncrypted.encryptPhoto(user?.photo);
     }
     if (user && !user.password){
+          
           const result=await   users.findByIdAndUpdate(user?._id, payload, {new:true , upsert:true});
           if(!result){
             throw new ApiError(httpStatus.NOT_EXTENDED, 'issues by the update information recorded section')
@@ -523,7 +528,7 @@ const googleAuthIntoDb = async (payload: TUser) => {
 
     // If user is not verified
     return { accessToken: null, refreshToken: null };
-  } catch (error: any) {
+  } catch (error:unknown) {
     catchError(error, 'Google auth failed')
   }
 };
