@@ -85,7 +85,7 @@ const TUserSchema = new Schema<TUser, UserModel>({
     },
     verificationCode: {
         type: String,
-        required: [false, 'verificationCode code is required'],
+        required: [false, 'verificationCode code is required'], select:0,
         index: true,
     },
     ipAddress: {

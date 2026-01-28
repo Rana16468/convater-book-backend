@@ -44,7 +44,8 @@ router.patch(
   auth(
     USER_ROLE.user,
     USER_ROLE.superAdmin,
-    USER_ROLE.admin
+    USER_ROLE.admin,
+    USER_ROLE.shop
   ),
   upload.single("file"),
   (req: Request, res: Response, next: NextFunction) => {

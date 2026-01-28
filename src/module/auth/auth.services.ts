@@ -11,6 +11,7 @@ import QueryBuilder from "../../app/builder/QueryBuilder";
 import { TUser } from "../user/user.interface";
 import { sendFileToCloudinary } from "../../utility/sendFileToCloudinary";
 import catchError from "../../app/error/catchError";
+import profileEncrypted from "../../utility/cryptoUtils/profileEncrypted";
 
 
 // ============== SECURITY CONSTANTS ==============
@@ -138,8 +139,7 @@ const refreshTokenIntoDb = async (token: string) => {
         $and: [
           { _id: id },
           { isVerify: true },
-          { status: USER_ACCESSIBILITY.isProgress },
-          { isDelete: false },
+          { status: USER_ACCESSIBILITY.isProgress }
         ],
       },
       { _id: 1, isVerify: 1, email: 1, role: 1 }
@@ -177,20 +177,29 @@ const refreshTokenIntoDb = async (token: string) => {
   }
 };
 
-// ============== GET MY PROFILE SERVICE ==============
 const myprofileIntoDb = async (id: string) => {
   try {
     const profile = await users
       .findById(id)
-      .select("name email phoneNumber dateOfBirth photo location");
+      .select("name email photo role status os browser device ipAddress isVerify createdAt");
 
     if (!profile) {
       throw new ApiError(httpStatus.NOT_FOUND, "User not found", "");
     }
+    console.log(profile.photo)
 
-    return profile;
+    // Decrypt photo
+    if (profile.photo) {
+      profile.photo = profileEncrypted.decryptPhoto(profile.photo);
+    }
+
+    return {
+      success: true,
+      message: "Successfully find my profile",
+      data: profile,
+    };
   } catch (error: unknown) {
-     catchError(error, 'Failed to fetch profile')
+    catchError(error, "Failed to fetch profile");
   }
 };
 
@@ -217,7 +226,6 @@ const changeMyProfileIntoDb = async (
       updateData.name = name.trim();
     }
 
-
     if (file) {
 
       if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
@@ -240,8 +248,13 @@ const changeMyProfileIntoDb = async (
       const randomNumber = Math.floor(10000 + Math.random() * 90000);
       const imageName=`${`${`book`}${randomNumber}`.trim()}`;
       
-        const  {secure_url}= await sendFileToCloudinary(imageName,path) 
-        updateData.photo = secure_url as string
+        const  {secure_url}= await sendFileToCloudinary(imageName,path)
+         console.log(secure_url)
+        updateData.photo = profileEncrypted.encryptPhoto(secure_url);
+        console.log( updateData.photo);
+
+
+
     }
 
     if (Object.keys(updateData).length === 0) {
