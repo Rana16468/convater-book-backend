@@ -187,9 +187,7 @@ const myprofileIntoDb = async (id: string) => {
     if (!profile) {
       throw new ApiError(httpStatus.NOT_FOUND, "User not found", "");
     }
-    console.log(profile.photo)
-
-    // Decrypt photo
+    
     if (profile.photo) {
       profile.photo = profileEncrypted.decryptPhoto(profile.photo);
     }
@@ -204,7 +202,7 @@ const myprofileIntoDb = async (id: string) => {
   }
 };
 
-// ============== UPDATE PROFILE SERVICE ==============
+
 const changeMyProfileIntoDb = async (req: any, id: string) => {
   try {
     const file = req.file;
@@ -239,6 +237,9 @@ const changeMyProfileIntoDb = async (req: any, id: string) => {
       { $set: updateData },
       { new: true }
     );
+    if(!result){
+      throw new ApiError(httpStatus.NOT_EXTENDED, 'issues by the profile updated server problem')
+    }
 
     return {
       success: true,
@@ -250,7 +251,6 @@ const changeMyProfileIntoDb = async (req: any, id: string) => {
   }
 };
 
-// ============== GET ALL USERS (ADMIN ONLY) ==============
 const findByAllUsersAdminIntoDb = async (
   query: Record<string, unknown>,
   userRole: string // ✅ SECURITY FIX: Get user role
@@ -265,7 +265,7 @@ const findByAllUsersAdminIntoDb = async (
       );
     }
 
-    const allUsersdQuery = new QueryBuilder(
+    const allUsersQuery = new QueryBuilder(
       users
         .find({ isVerify: true, isDelete: false })
         .select("-password -isDelete -createdAt -updatedAt -verificationCode") // ✅ SECURITY FIX: Exclude sensitive fields
@@ -278,8 +278,8 @@ const findByAllUsersAdminIntoDb = async (
       .paginate()
       .fields();
 
-    const all_users = await allUsersdQuery.modelQuery;
-    const meta = await allUsersdQuery.countTotal();
+    const all_users = await allUsersQuery.modelQuery;
+    const meta = await allUsersQuery.countTotal();
 
     return { meta, all_users };
   } catch (error: unknown) {

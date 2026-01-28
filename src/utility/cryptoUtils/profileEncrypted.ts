@@ -40,8 +40,13 @@ const key = crypto.scryptSync(SECRET_KEY, "salt", 32);
   }
 };
 
+const isCloudinaryUrl = (url: string): boolean => {
+  return url.includes("res.cloudinary.com");
+};
+
+
 const profileEncrypted={
-    encryptPhoto, decryptPhoto
+    encryptPhoto, decryptPhoto, isCloudinaryUrl
 };
 
 export default  profileEncrypted;

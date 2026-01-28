@@ -14,6 +14,7 @@ import emailContext from '../../utility/emailcontext/sendvarificationData';
 import catchError from '../../app/error/catchError';
 import cryptoUtils from '../../utility/cryptoUtils/cryptoUtils';
 import profileEncrypted from '../../utility/cryptoUtils/profileEncrypted';
+import deleteFileFromCloudinary from '../../utility/deleteFileFromCloudinary';
 
 
 
@@ -469,67 +470,83 @@ const resetPasswordIntoDb = async (payload: {
 
 const googleAuthIntoDb = async (payload: TUser) => {
   try {
-
     let user = await users.findOne(
       {
         email: payload.email,
         isVerify: true,
       },
-      { _id: 1, role: 1, email: 1, isVerify: 1, password:1, photo:1  },
+      { _id: 1, role: 1, email: 1, isVerify: 1, password: 1, photo: 1 }
     ) as any;
-    
 
-    if(user && user.password){
-
-        throw new ApiError(httpStatus.FOUND, "this user already exist in this system ", "");
-    };
-    if(user && user?.photo){
-          payload.photo=profileEncrypted.encryptPhoto(user?.photo);
-    }
-    if (user && !user.password){
-          
-          const result=await   users.findByIdAndUpdate(user?._id, payload, {new:true , upsert:true});
-          if(!result){
-            throw new ApiError(httpStatus.NOT_EXTENDED, 'issues by the update information recorded section')
-          }
+    if (user && user.password) {
+      throw new ApiError(
+        httpStatus.FOUND,
+        "this user already exist in this system",
+        ""
+      );
     }
 
-    let jwtPayload;
+    if (user && user.photo && payload.photo) {
+  
+      const decryptedOldPhoto = profileEncrypted.decryptPhoto(user.photo);
+
+      if (profileEncrypted.isCloudinaryUrl(decryptedOldPhoto)) {
+        await deleteFileFromCloudinary(decryptedOldPhoto);
+      }
+      payload.photo = profileEncrypted.encryptPhoto(payload.photo);
+    }
+    if (user && !user.password) {
+      const result = await users.findByIdAndUpdate(
+        user._id,
+        payload,
+        { new: true, upsert: true }
+      );
+
+      if (!result) {
+        throw new ApiError(
+          httpStatus.NOT_EXTENDED,
+          "issues by the update information recorded section"
+        );
+      }
+    }
 
     if (!user) {
-
-      const encryptedKey=cryptoUtils.generateKeyPair()
-
+      const encryptedKey = cryptoUtils.generateKeyPair();
       payload.isVerify = true;
-      const newUser = new users({...payload, ...encryptedKey});
+
+      if (payload.photo) {
+        payload.photo = profileEncrypted.encryptPhoto(payload.photo);
+      }
+
+      const newUser = new users({ ...payload, ...encryptedKey });
       user = await newUser.save();
     }
 
-    jwtPayload = {
+    const jwtPayload = {
       id: user._id.toString(),
       role: user.role,
       email: user.email,
     };
-  
+
     if (user.isVerify) {
       const accessToken = jwtHelpers.generateToken(
         jwtPayload,
         config.jwt_access_secret as string,
-        config.expires_in as string,
+        config.expires_in as string
       );
 
       const refreshToken = jwtHelpers.generateToken(
         jwtPayload,
         config.jwt_refresh_secret as string,
-        config.refresh_expires_in as string,
+        config.refresh_expires_in as string
       );
+
       return { accessToken, refreshToken };
     }
 
-    // If user is not verified
     return { accessToken: null, refreshToken: null };
-  } catch (error:unknown) {
-    catchError(error, 'Google auth failed')
+  } catch (error: unknown) {
+    catchError(error, "Google auth failed");
   }
 };
 
