@@ -94,6 +94,15 @@ const TUserSchema = new Schema<TUser, UserModel>({
         required: [false, 'Is Verify is required'],
         default: null
     },
+    publicKey:{
+        type: String,
+        required:[true, ' publicKey is required']
+    },
+    privateKey:{
+        type:String,
+        required:[true , 'privateKey is required']
+
+    },
 
 
     isDelete: {

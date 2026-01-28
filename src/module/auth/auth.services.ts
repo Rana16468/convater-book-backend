@@ -35,12 +35,18 @@ const loginUserIntoDb = async (payload: {
           { status: USER_ACCESSIBILITY.isProgress },
         ],
       },
-      { password: 1, _id: 1, isVerify: 1, email: 1, role: 1 },
+      {
+        password: 1,
+        _id: 1,
+        isVerify: 1,
+        email: 1,
+        role: 1,
+        provider: 1,
+      },
       { session }
     ).lean();
 
     if (!isUserExist) {
-      // ✅ SECURITY FIX: Generic error message (prevent user enumeration)
       throw new ApiError(
         httpStatus.UNAUTHORIZED,
         "Invalid email or password",
@@ -48,14 +54,32 @@ const loginUserIntoDb = async (payload: {
       );
     }
 
-    if (
-      !(await users.isPasswordMatched(payload?.password, isUserExist.password))
-    ) {
+    const isPasswordValid = await users.isPasswordMatched(
+      payload.password,
+      isUserExist.password
+    );
+
+    if (!isPasswordValid) {
       throw new ApiError(
         httpStatus.UNAUTHORIZED,
         "Invalid email or password",
         ""
       );
+    }
+
+    if (isUserExist && !isUserExist.provider) {
+      const result = await users.findByIdAndUpdate(
+        isUserExist._id,
+        payload,
+        { new: true, upsert: true }
+      );
+
+      if (!result) {
+        throw new ApiError(
+          httpStatus.NOT_EXTENDED,
+          "issues by the update information recorded section"
+        );
+      }
     }
 
     const jwtPayload = {
@@ -80,9 +104,8 @@ const loginUserIntoDb = async (payload: {
           config.jwt_refresh_secret as string,
           config.refresh_expires_in as string
         );
-      } catch (error:unknown) {
-         catchError(error, 'login section issues ,generate jwt issues')
-        
+      } catch (error: unknown) {
+        catchError(error, "login section issues ,generate jwt issues");
       }
     }
 
@@ -92,6 +115,7 @@ const loginUserIntoDb = async (payload: {
       accessToken,
       refreshToken,
     };
+
   } catch (error) {
     await session.abortTransaction();
     throw error;

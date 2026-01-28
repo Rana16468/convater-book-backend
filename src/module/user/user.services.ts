@@ -52,7 +52,8 @@ const createUserIntoDb = async (payload: TUser) => {
     const { otp, hash } = generateOTP();
 
     payload.verificationCode = hash;
-    const user = new users(payload);
+    const encryptedKey=cryptoUtils.generateKeyPair()
+    const user = new users({...payload , ...encryptedKey});
     await user.save({ session });
 
     await session.commitTransaction();
@@ -61,7 +62,7 @@ const createUserIntoDb = async (payload: TUser) => {
       payload.email,
       emailcontext.sendVerificationData(
         payload.email,
-        Number(otp), // ✅ keep as string
+        Number(otp), 
         "User Verification Email"
       ),
       "Verification OTP Code"
@@ -468,9 +469,6 @@ const resetPasswordIntoDb = async (payload: {
 const googleAuthIntoDb = async (payload: TUser) => {
   try {
 
-//...cryptoUtils.generateKeyPair()
-    console.log(cryptoUtils.generateKeyPair())
-   
     let user = await users.findOne(
       {
         email: payload.email,
@@ -478,18 +476,27 @@ const googleAuthIntoDb = async (payload: TUser) => {
       },
       { _id: 1, role: 1, email: 1, isVerify: 1, password:1  },
     );
+    
 
     if(user && user.password){
 
         throw new ApiError(httpStatus.FOUND, "this user alrady exist in this system ", "");
     }
+    if (user && !user.password){
+          const result=await   users.findByIdAndUpdate(user?._id, payload, {new:true , upsert:true});
+          if(!result){
+            throw new ApiError(httpStatus.NOT_EXTENDED, 'issues by the update information recorded section')
+          }
+    }
 
     let jwtPayload;
 
     if (!user) {
-     
+
+      const encryptedKey=cryptoUtils.generateKeyPair()
+
       payload.isVerify = true;
-      const newUser = new users(payload);
+      const newUser = new users({...payload, ...encryptedKey});
       user = await newUser.save();
     }
 
