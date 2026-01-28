@@ -13,5 +13,7 @@ HOST=localhost
 CLOUDINARY_CLOUD_NAME=dibdpdonn
 CLOUDINARY_API_KEY=774692792824116
 CLOUDINARY_API_SECRET=2AceewJa9G1jsWdZ5n4AxvS3id4
+ALGORITHM=aes-256-gcm
+SECRET_KEY="7*)igbmsz-rm$wn)r=sj542f^_ft$j*06pdhz3^l34z!jxgtmk"
 # username:book_convater
 # password:OEY9iedKoXye97gM
