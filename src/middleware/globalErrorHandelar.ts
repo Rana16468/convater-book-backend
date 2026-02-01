@@ -12,7 +12,7 @@ import ApiError from '../app/error/ApiError';
 import handelDuplicateError from '../app/error/handelDuplicateError';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const globalErrorHandelar: ErrorRequestHandler = (
+const globalErrorhandler: ErrorRequestHandler = (
   err,
   req: Request,
   res: Response,
@@ -63,4 +63,4 @@ const globalErrorHandelar: ErrorRequestHandler = (
   next();
 };
 
-export default globalErrorHandelar;
+export default globalErrorhandler;

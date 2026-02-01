@@ -1,10 +1,15 @@
 import express from 'express';
 import cors from 'cors';
 import notFound from './middleware/notFound';
-import globalErrorHandelar from './middleware/globalErrorHandelar';
+
 import router from './router';
 import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
+import cron from 'node-cron'
+import auto_delete_unverified_user from './utility/cron/auto_delete_unverified_user';
+import catchError from './app/error/catchError';
+import globalErrorhandler from './middleware/globalErrorHandelar';
+
 declare global {
   namespace Express {
     interface Request {
@@ -38,11 +43,21 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
   res.send({ status: true, message: 'Well Come  Book Convater Server' });
 });
-//username:navyboy
-//password:5aNjnODj1ecD2sSx
+
+
+
+cron.schedule("*/10 * * * *", async () => {
+  try {
+     await auto_delete_unverified_user();
+    
+  } catch (error: unknown) {
+       catchError(error,'[Cron] Error in subscription expiry cron job:');
+  }
+});
+
 app.use('/api/v1', router);
 
 app.use(notFound);
-app.use(globalErrorHandelar);
+app.use(globalErrorhandler);
 
 export default app;
