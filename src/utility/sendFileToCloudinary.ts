@@ -22,7 +22,11 @@ export const sendFileToCloudinary = (
 
     if ([".png", ".jpg", ".jpeg", ".webp"].includes(ext)) {
       resourceType = "image";
-    } else if ([".mp4", ".mov", ".avi"].includes(ext)) {
+    }
+    else if ([".pdf"].includes(ext)) {
+      resourceType = "image"; // ✅ PDF-কে image হিসেবে পাঠাচ্ছি
+    }
+    else if ([".mp4", ".mov", ".avi"].includes(ext)) {
       resourceType = "video";
     }
 
@@ -35,13 +39,13 @@ export const sendFileToCloudinary = (
       },
       (error, result) => {
         fs.unlink(filePath, () => {});
-
         if (error) return reject(error);
         resolve(result as UploadApiResponse);
       }
     );
   });
 };
+
 
 
   // multer ---image uploding process
