@@ -1,17 +1,19 @@
 import httpStatus from "http-status";
+import mongoose from "mongoose";
 import ApiError from "../../app/error/ApiError";
 import catchError from "../../app/error/catchError";
 import { sendFileToCloudinary } from "../../utility/sendFileToCloudinary";
-import { TOrder } from "./order.interface";
+import { TOrder, TOrderResult } from "./order.interface";
 import orders from "./order.model";
-import {uploadFileToGoogleDrive} from "../../utility/uploadFileToGoogleDrive";
-
-
+import ordertrackings from "../order_tracking/order_tracking.model";
 
 const createOrderIntoDb = async (
   payload: Partial<TOrder>
-): Promise<TOrder> => {
+): Promise<TOrderResult> => {
+  const session = await mongoose.startSession();
+  session.startTransaction(); // Start transaction
   try {
+  
     if (!payload.fileData || !payload.coverImages) {
       throw new ApiError(httpStatus.BAD_REQUEST, "File data or images missing");
     }
@@ -25,27 +27,15 @@ const createOrderIntoDb = async (
         httpStatus.BAD_REQUEST,
         "File, front image, or back image missing"
       );
-    }
+    };
 
-    // upload pdf
-    // const fileUpload = await sendFileToCloudinary(
-    //   `user-file-${Date.now()}`,
-    //   filePath
-    // );
-    // ✅ Upload PDF to Google Drive
-    const fileUpload = await uploadFileToGoogleDrive(
-      `user-file-${Date.now()}`,
-      filePath,
-      "application/pdf"
-    );
 
-    // upload front image
+
     const frontUpload = await sendFileToCloudinary(
       `front-cover-${Date.now()}`,
       frontPath
     );
 
-    // upload back image
     const backUpload = await sendFileToCloudinary(
       `back-cover-${Date.now()}`,
       backPath
@@ -55,34 +45,53 @@ const createOrderIntoDb = async (
       ...(payload as TOrder),
       fileData: {
         ...payload.fileData,
-        file: fileUpload.secure_url
       },
       coverImages: {
         front: frontUpload.secure_url,
-        back: backUpload.secure_url
-      }
+        back: backUpload.secure_url,
+      },
     };
 
+    // Save order
     const orderBuilder = new orders(finalPayload);
-    const result = await orderBuilder.save();
+    const result = await orderBuilder.save({ session });
 
     if (!result) {
-      throw new ApiError(
-        httpStatus.NOT_EXTENDED,
-        "Order record failed"
-      );
+      throw new ApiError(httpStatus.NOT_EXTENDED, "Order record failed");
     }
 
-    return result;
+    // Create order tracking
+    const orderTrackingBuilder = new ordertrackings({
+      orderId: payload.orderId,
+      orderRealId: result._id,
+    });
+
+    const trackingResult = await orderTrackingBuilder.save({ session });
+    if (!trackingResult) {
+      throw new ApiError(httpStatus.NOT_EXTENDED, "Order tracking failed");
+    }
+
+    // Commit transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    return {
+      status:true,
+      message:`successfully recorded order & orderId :${payload.orderId}`
+
+    };
   } catch (error) {
+    // Rollback transaction
+    await session.abortTransaction();
+    session.endSession();
+
     catchError(error);
     throw error;
   }
 };
 
-
-const orderServices={
-    createOrderIntoDb
+const orderServices = {
+  createOrderIntoDb,
 };
 
 export default orderServices;

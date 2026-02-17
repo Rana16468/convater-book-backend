@@ -23,6 +23,12 @@ export default {
   },
   algorithm :process.env.algorithm ,
   secret_key: process.env.SECRET_KEY, 
-  google_drive_folder_id: GOOGLE_DRIVE_FOLDER_ID
+  s3_bucket: {
+    aws_bucket_accesskey: process.env.AWS_BUCKET_ACCESS_KEY,
+    aws_bucket_secret_key: process.env.AWS_BUCKET_SECRET_KEY,
+    aws_bucket_region: process.env.AWS_BUCKET_REGION,
+    aws_bucket_name: process.env.AWS_BUCKET_NAME,
+  },
+  
 
 };

@@ -46,6 +46,12 @@ export interface TOrder {
   uploadStatus?: string;
 };
 
+
+export interface TOrderResult {
+   status: boolean;
+   message:string;
+}
+
 export interface OrderMethods {
   comparePassword(candidatePassword: string): Promise<boolean>;
 }

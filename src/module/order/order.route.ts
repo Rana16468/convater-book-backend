@@ -1,10 +1,11 @@
-import express, { NextFunction, Request, Response } from 'express';
-import upload from '../../utility/uplodeFile';
-import ApiError from '../../app/error/ApiError';
-import httpStatus from 'http-status';
-import validationRequest from '../../middleware/validationRequest';
-import orderZodValidation from './order.validation';
-import orderController from './order.controller';
+import express, { NextFunction, Request, Response } from "express";
+import upload from "../../utility/uplodeFile";
+import ApiError from "../../app/error/ApiError";
+import httpStatus from "http-status";
+import validationRequest from "../../middleware/validationRequest";
+import orderZodValidation from "./order.validation";
+import orderController from "./order.controller";
+import { uploadToS3 } from "../../utility/uploadToS3";
 
 const route = express.Router();
 
@@ -19,10 +20,6 @@ route.post(
 
   async (req: Request, _res: Response, next: NextFunction) => {
     try {
-      /* ---------------------------------------
-         1️⃣ Parse JSON from frontend
-      ---------------------------------------- */
-
       if (req.body.data && typeof req.body.data === "string") {
         req.body = JSON.parse(req.body.data);
       }
@@ -31,32 +28,28 @@ route.post(
         [fieldname: string]: Express.Multer.File[];
       };
 
-      /* ---------------------------------------
-         2️⃣ Inject Cover Images
-      ---------------------------------------- */
-
+      // front image (local path for now)
       if (files?.front?.[0]) {
         req.body.coverImages = req.body.coverImages || {};
         req.body.coverImages.front = files.front[0].path.replace(/\\/g, "/");
       }
 
+      // back image (local path for now)
       if (files?.back?.[0]) {
         req.body.coverImages = req.body.coverImages || {};
         req.body.coverImages.back = files.back[0].path.replace(/\\/g, "/");
       }
 
-      /* ---------------------------------------
-         3️⃣ Inject FileData.file
-      ---------------------------------------- */
-
+      // ✅ main file → upload to S3
       if (files?.file?.[0]) {
-        req.body.fileData = req.body.fileData || {};
-        req.body.fileData.file = files.file[0].path.replace(/\\/g, "/");
-      }
+        const uploadedUrl = await uploadToS3(
+          files.file[0], 
+          "orders"
+        );
 
-      /* ---------------------------------------
-         4️⃣ Inject IP Address
-      ---------------------------------------- */
+        req.body.fileData = req.body.fileData || {};
+        req.body.fileData.file = uploadedUrl;
+      }
 
       req.body.ipAddress =
         req.ip ||
@@ -76,11 +69,7 @@ route.post(
   },
 
   validationRequest(orderZodValidation.createOrderZodSchema),
-
   orderController.createOrder
 );
 
-
-const OrderRoutes=route
-
-export default  OrderRoutes;
+export default route;

@@ -33,6 +33,7 @@ const orderSchema = new Schema<TOrder, OrderModel, OrderMethods>(
 
     delivery: {
       type: deliverySchema,
+
       required: true,
     },
 
@@ -46,6 +47,7 @@ const orderSchema = new Schema<TOrder, OrderModel, OrderMethods>(
     orderId: {
       type: String,
       required: true,
+      index:true,
       unique: true,
     },
 
@@ -67,6 +69,7 @@ const orderSchema = new Schema<TOrder, OrderModel, OrderMethods>(
     
  ipAddress:{
      type: String,
+     index:true,
       required: true
  },
     showErrors: Boolean,
