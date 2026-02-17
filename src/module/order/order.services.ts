@@ -4,6 +4,7 @@ import catchError from "../../app/error/catchError";
 import { sendFileToCloudinary } from "../../utility/sendFileToCloudinary";
 import { TOrder } from "./order.interface";
 import orders from "./order.model";
+import {uploadFileToGoogleDrive} from "../../utility/uploadFileToGoogleDrive";
 
 
 
@@ -27,9 +28,15 @@ const createOrderIntoDb = async (
     }
 
     // upload pdf
-    const fileUpload = await sendFileToCloudinary(
+    // const fileUpload = await sendFileToCloudinary(
+    //   `user-file-${Date.now()}`,
+    //   filePath
+    // );
+    // ✅ Upload PDF to Google Drive
+    const fileUpload = await uploadFileToGoogleDrive(
       `user-file-${Date.now()}`,
-      filePath
+      filePath,
+      "application/pdf"
     );
 
     // upload front image

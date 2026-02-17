@@ -22,6 +22,7 @@ export default {
     cloudinary_api_secret: process.env.CLOUDINARY_API_SECRET,
   },
   algorithm :process.env.algorithm ,
-  secret_key: process.env.SECRET_KEY
+  secret_key: process.env.SECRET_KEY, 
+  google_drive_folder_id: GOOGLE_DRIVE_FOLDER_ID
 
 };
