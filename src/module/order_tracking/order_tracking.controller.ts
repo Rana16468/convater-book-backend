@@ -1,0 +1,26 @@
+import { RequestHandler } from "express";
+import catchAsync from "../../utility/catchAsync";
+import orderTrackingServices from "./order_tracking.services";
+import sendResponse from "../../utility/sendResponse";
+import httpStatus from "http-status";
+
+
+
+const forgotOrderAuthenticator:RequestHandler=catchAsync(async(req , res)=>{
+
+      const result=await orderTrackingServices.forgotOrderAuthenticatorIntoDb(req.body);
+     sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.CREATED,
+    message: 'Successfully Login',
+    data: result,
+  });
+
+});
+
+
+const orderTrackingController={
+     forgotOrderAuthenticator
+};
+
+export default orderTrackingController;

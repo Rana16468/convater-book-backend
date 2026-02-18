@@ -50,6 +50,11 @@ export interface TOrderTracking {
   isDelete: boolean;
 }
 
+export interface ForgotOrderPayload {
+   phone: string;
+   password: string;
+}
+
 export interface OrderTrackingMethods {
   isOrderTrackingByCustomId(
     id: string

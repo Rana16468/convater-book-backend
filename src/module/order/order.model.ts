@@ -33,6 +33,7 @@ const orderSchema = new Schema<TOrder, OrderModel,TOrderResult >(
 
     delivery: {
       type: deliverySchema,
+      index:true,
 
       required: true,
     },
