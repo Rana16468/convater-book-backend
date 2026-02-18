@@ -93,9 +93,10 @@ orderTrackingSchema.pre("find", excludeDeleted);
 orderTrackingSchema.pre("findOne", excludeDeleted);
 orderTrackingSchema.pre("findOneAndUpdate", excludeDeleted);
 orderTrackingSchema.pre("aggregate", function (next) {
-  this.pipeline().unshift({ $match: { isDelete: { $ne: true } } });
+ this.pipeline().unshift({ $match: { isDelete: { $ne: true } } });
   next();
 });
+
 
 // Static method
 orderTrackingSchema.statics.findByCustomOrderId = function (id: string) {

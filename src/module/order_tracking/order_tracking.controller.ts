@@ -29,15 +29,26 @@ const findByMyOrderTracking:RequestHandler=catchAsync(async(req , res)=>{
     message: 'Successfully Find By My TAll Order',
     data: result,
   });
+});
+
+const OrderTracking:RequestHandler=catchAsync(async(req , res)=>{
+
+    const result=await orderTrackingServices.OrderTrackingIntoDb(req.params.orderId);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Successfully Find By Order Tracking',
+    data: result,
+  });
+});
 
 
-
-})
 
 
 const orderTrackingController={
      forgotOrderAuthenticator,
-     findByMyOrderTracking
+     findByMyOrderTracking,
+      OrderTracking
 };
 
 export default orderTrackingController;

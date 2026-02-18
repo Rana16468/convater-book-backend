@@ -182,10 +182,36 @@ const forgotOrderAuthenticatorIntoDb = async (
 };
 
 
+const OrderTrackingIntoDb = async (orderId: string) => {
+  try {
+    const result = await ordertrackings
+      .findOne({ orderId })
+      .populate({
+        path: "orderRealId",
+        select: `
+          fileData.name
+          fileData.pages
+          preferences.bookName
+          preferences.pageType
+          preferences.printType
+          preferences.quantity
+          payment.totalCost
+          payment.method
+        `,
+      });
+
+    return result;
+  } catch (error) {
+    catchError(error);
+  }
+};
+
+
 
 export const orderTrackingServices = {
   forgotOrderAuthenticatorIntoDb,
-  findByMyOrderTrackingIntoDb
+  findByMyOrderTrackingIntoDb,
+  OrderTrackingIntoDb
 };
 
 export default orderTrackingServices;
