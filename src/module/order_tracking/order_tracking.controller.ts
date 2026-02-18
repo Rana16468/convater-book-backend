@@ -19,8 +19,25 @@ const forgotOrderAuthenticator:RequestHandler=catchAsync(async(req , res)=>{
 });
 
 
+const findByMyOrderTracking:RequestHandler=catchAsync(async(req , res)=>{
+
+
+  const result=await orderTrackingServices.findByMyOrderTrackingIntoDb(req.user.phone, req.query);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Successfully Find By My TAll Order',
+    data: result,
+  });
+
+
+
+})
+
+
 const orderTrackingController={
-     forgotOrderAuthenticator
+     forgotOrderAuthenticator,
+     findByMyOrderTracking
 };
 
 export default orderTrackingController;
