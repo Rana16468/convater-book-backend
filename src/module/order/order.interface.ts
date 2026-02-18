@@ -28,6 +28,8 @@ export interface TOrder {
   payment: {
     method: string;
     transactionId: string;
+    totalCost:number;
+
     voucher?: string;
   };
 
@@ -52,9 +54,14 @@ export interface TOrderResult {
    message:string;
 }
 
-export interface OrderMethods {
-  comparePassword(candidatePassword: string): Promise<boolean>;
+export interface OrderModel extends Model<TOrder> {
+  comparePassword(
+    plainTextPassword: string,
+    hashPassword: string
+  ): Promise<boolean>;
 }
+
+
 
 export interface OrderModel extends Model<TOrder> {
   isOrderExistByCustomId(id: string): Promise<TOrder | null>;

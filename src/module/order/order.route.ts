@@ -7,6 +7,8 @@ import orderZodValidation from "./order.validation";
 import orderController from "./order.controller";
 import { uploadToS3 } from "../../utility/uploadToS3";
 
+import orderAuth from "../../middleware/orderAuth";
+
 const route = express.Router();
 
 route.post(
@@ -71,5 +73,10 @@ route.post(
   validationRequest(orderZodValidation.createOrderZodSchema),
   orderController.createOrder
 );
+
+route.post("/order_auth", validationRequest(orderZodValidation.orderAuthenticatorSchema), orderController.orderAuthenticator);
+route.get("/latest_order_tracking", orderAuth(), orderController.latestOrderTracking);
+
+
 
 export default route;

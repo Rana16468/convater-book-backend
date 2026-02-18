@@ -36,6 +36,7 @@ const paymentSchema = z.object({
   method: z.enum(["bkash", "nagad", "rocket", "cash"], {
     required_error: "Payment method is required",
   }),
+  totalCost:z.string().min(2, "totalCost is required"),
   transactionId: z.string().min(1, "Transaction ID is required"),
   voucher: z.string().optional(),
 });
@@ -87,8 +88,17 @@ const preferencesSchema = z.object({
   }),
 });
 
+const orderAuthenticatorSchema=z.object({
+  body: z.object({
+    orderId: z.string({required_error:"orderId is required"}),
+    password: z.string({required_error:"password is required"})
+  
+  })
+})
+
 const orderZodValidation={
-    createOrderZodSchema
+    createOrderZodSchema,
+    orderAuthenticatorSchema
 };
 
 export default orderZodValidation;

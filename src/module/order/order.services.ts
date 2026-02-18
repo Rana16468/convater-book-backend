@@ -4,8 +4,11 @@ import ApiError from "../../app/error/ApiError";
 import catchError from "../../app/error/catchError";
 import { sendFileToCloudinary } from "../../utility/sendFileToCloudinary";
 import { TOrder, TOrderResult } from "./order.interface";
-import orders from "./order.model";
+
 import ordertrackings from "../order_tracking/order_tracking.model";
+import orders from "./order.model";
+import { jwtHelpers } from "../../helper/jwtHelpers";
+import config from "../../app/config";
 
 const createOrderIntoDb = async (
   payload: Partial<TOrder>
@@ -59,6 +62,10 @@ const createOrderIntoDb = async (
     if (!result) {
       throw new ApiError(httpStatus.NOT_EXTENDED, "Order record failed");
     }
+    if (payload.payment) {
+      payload.payment.totalCost = Number(payload.payment.totalCost);
+}
+
 
     // Create order tracking
     const orderTrackingBuilder = new ordertrackings({
@@ -90,8 +97,101 @@ const createOrderIntoDb = async (
   }
 };
 
+const orderAuthenticatorIntoDb = async (payload: {
+  orderId: string;
+  password: string;
+}) => {
+  try {
+    if (!payload.orderId || !payload.password) {
+      throw new ApiError(httpStatus.BAD_REQUEST, "Invalid credentials");
+    }
+
+    const order = await orders
+      .findOne({ orderId: payload.orderId })
+      .select("+delivery.password orderId delivery.name delivery.phone");
+
+    if (!order) {
+      throw new ApiError(
+        httpStatus.UNAUTHORIZED,
+        "Invalid orderId or password"
+      );
+    }
+
+    const isPasswordValid = await orders.comparePassword(
+      payload.password,
+      order.delivery.password
+    );
+
+    if (!isPasswordValid) {
+      throw new ApiError(
+        httpStatus.UNAUTHORIZED,
+        "Invalid orderId or password"
+      );
+    }
+
+    const jwtPayload = {
+      _id: order._id.toString(),
+      name: order.delivery.name,
+      phone: order.delivery.phone,
+      orderId: order.orderId,
+    };
+
+    const accessToken = jwtHelpers.generateOrderToken(
+      jwtPayload,
+      config.jwt_access_secret as string,
+      config.expires_in as string
+    );
+
+    const refreshToken = jwtHelpers.generateOrderToken(
+      jwtPayload,
+      config.jwt_refresh_secret as string,
+      config.refresh_expires_in as string
+    );
+
+    return {
+      status: true,
+      message: "Login successful",
+      orderId: order.orderId,
+      accessToken,
+      refreshToken,
+    };
+
+  } catch (error) {
+    catchError(error);
+  }
+};
+const latestOrderTrackingIntoDb = async (orderId: string) => {
+  try {
+    const result = await ordertrackings
+      .findOne({ orderId })
+      .populate({
+        path: "orderRealId",
+        select: `
+          fileData.name
+          fileData.pages
+          preferences.bookName
+          preferences.pageType
+          preferences.printType
+          preferences.quantity
+          payment.totalCost
+          payment.method
+        `,
+      });
+
+    return result;
+  } catch (error) {
+    catchError(error);
+  }
+};
+
+
+
+
+
 const orderServices = {
   createOrderIntoDb,
+  orderAuthenticatorIntoDb,
+  latestOrderTrackingIntoDb
 };
 
 export default orderServices;

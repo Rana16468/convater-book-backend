@@ -7,7 +7,7 @@ const orderTrackingSchema = new Schema<
   OrderTrackingMethods
 >(
   {
-    orderId: { type: String, required: true, ref: "orders", unique: true },
+    orderId: { type: String, index:true, required: true, ref: "orders", unique: true },
     orderRealId: { type: Schema.Types.ObjectId, ref: "orders", required: true },
 
     OrderPlaced: {

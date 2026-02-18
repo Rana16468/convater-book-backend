@@ -1,6 +1,6 @@
 import { Schema, model } from "mongoose";
 import bcrypt from "bcrypt";
-import { TOrder, OrderModel, OrderMethods } from "./order.interface";
+import { TOrder, OrderModel, TOrderResult } from "./order.interface";
 import config from "../../app/config";
 
 
@@ -24,7 +24,7 @@ const deliverySchema = new Schema(
 
 
 
-const orderSchema = new Schema<TOrder, OrderModel, OrderMethods>(
+const orderSchema = new Schema<TOrder, OrderModel,TOrderResult >(
   {
     coverImages: {
       back: String,
@@ -53,6 +53,8 @@ const orderSchema = new Schema<TOrder, OrderModel, OrderMethods>(
 
     payment: {
       method: { type: String, required: true },
+      totalCost:{ type: Number, required: true },
+
       transactionId: { type: String, required: true },
       voucher: String,
     },
@@ -119,13 +121,12 @@ orderSchema.pre('findOne', function (next) {
    🔑 Compare Password Method
 ------------------------------------------------- */
 
-orderSchema.methods.comparePassword = async function (
-  candidatePassword: string
+orderSchema.statics.comparePassword =  async function (
+  plainTextPassword: string,
+  hashPassword: string,
 ) {
-  return await bcrypt.compare(
-    candidatePassword,
-    this.delivery.password
-  );
+  const password = await bcrypt.compare(plainTextPassword, hashPassword);
+  return password;
 };
 
 /* ------------------------------------------------

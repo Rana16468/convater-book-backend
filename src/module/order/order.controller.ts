@@ -19,9 +19,36 @@ const createOrder:RequestHandler=catchAsync(async(req , res)=>{
 });
 
 
+const orderAuthenticator:RequestHandler=catchAsync(async(req , res)=>{
+
+    const result=await orderServices.orderAuthenticatorIntoDb(req.body);
+ sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.CREATED,
+    message: 'Successfully  Login',
+    data: result,
+  });
+
+});
+
+const  latestOrderTracking:RequestHandler=catchAsync(async(req , res)=>{
+
+    const result=await orderServices.latestOrderTrackingIntoDb( req.user.orderId);
+ sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.CREATED,
+    message: 'Successfully Find By Latest Order Tracking Data',
+    data: result,
+  });
+
+})
+
+
 
 const orderController={
-    createOrder
+    createOrder,
+    orderAuthenticator,
+     latestOrderTracking
 };
 
 export default orderController;
