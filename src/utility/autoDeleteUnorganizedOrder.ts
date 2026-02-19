@@ -61,7 +61,7 @@ const deleteOrderFiles = async ({
 };
 
 const clearOrderFiles = async (
-  orderId: mongoose.Types.ObjectId,
+  orderId: string,
   session: ClientSession
 ): Promise<void> => {
   await orders.findOneAndDelete(
