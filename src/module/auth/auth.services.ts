@@ -389,6 +389,29 @@ const isBlockAccountIntoDb = async (
   }
 };
 
+
+
+
+const deleteAdminIntoDb=async(id:string)=>{
+
+
+    try{
+      const result=await users.findByIdAndDelete(id);
+      if(!result){
+        throw new ApiError(httpStatus.NOT_EXTENDED,' issues by the delete admin section')
+      };
+
+      return {
+        status:true ,
+        message:"successfully delete"
+      }
+
+    }
+    catch(error){
+      catchError(error);
+    }
+}
+
 // ============== EXPORT SERVICES ==============
 const AuthServices = {
   loginUserIntoDb,
@@ -398,6 +421,8 @@ const AuthServices = {
   findByAllUsersAdminIntoDb,
   deleteAccountIntoDb,
   isBlockAccountIntoDb,
+  deleteAdminIntoDb
+  
 };
 
 export default AuthServices;

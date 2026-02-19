@@ -67,16 +67,16 @@ router.get(
   auth(USER_ROLE.admin, USER_ROLE.superAdmin),
   AuthController.findByAllUsersAdmin
 );
-router.delete(
-  "/delete_account/:id",
-  auth(
-    USER_ROLE.admin,
-    USER_ROLE.user,
-    USER_ROLE.superAdmin,
+// router.delete(
+//   "/delete_account/:id",
+//   auth(
+//     USER_ROLE.admin,
+//     USER_ROLE.user,
+//     USER_ROLE.superAdmin,
   
-  ),
-  AuthController.deleteAccount
-);
+//   ),
+//   AuthController.deleteAccount
+// );
 
 
 router.patch(
@@ -85,6 +85,9 @@ router.patch(
   validationRequest(LoginValidationSchema.changeUserAccountStatus),
   AuthController.isBlockAccount
 );
+
+
+router.delete("/delete_account/:id", auth(USER_ROLE.admin, USER_ROLE.superAdmin), AuthController.deleteAdmin)
 
 
 const AuthRouter = router;
