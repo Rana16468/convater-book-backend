@@ -43,12 +43,27 @@ const OrderTracking:RequestHandler=catchAsync(async(req , res)=>{
 });
 
 
+const changeOrderTrackingStatus:RequestHandler=catchAsync(async(req , res)=>{
+
+
+    const result=await orderTrackingServices.changeOrderTrackingStatusIntoDb(req.params.orderId, req.body);
+    sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Successfully Change Tracking Status',
+    data: result,
+  });
+
+})
+
+
 
 
 const orderTrackingController={
      forgotOrderAuthenticator,
      findByMyOrderTracking,
-      OrderTracking
+      OrderTracking,
+      changeOrderTrackingStatus
 };
 
 export default orderTrackingController;

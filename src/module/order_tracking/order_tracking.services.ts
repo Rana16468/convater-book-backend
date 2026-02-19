@@ -2,11 +2,13 @@ import httpStatus from "http-status";
 import ApiError from "../../app/error/ApiError";
 import catchError from "../../app/error/catchError";
 import orders from "../order/order.model";
-import { ForgotOrderPayload } from "./order_tracking.interface";
+import { ForgotOrderPayload, TOrderTracking } from "./order_tracking.interface";
 import { jwtHelpers } from "../../helper/jwtHelpers";
 import config from "../../app/config";
-import QueryBuilder from "../../app/builder/QueryBuilder";
+
 import ordertrackings from "./order_tracking.model";
+import { allowedFields, statusBooleanFieldMap, statusFlow } from "./order_tracking.constant";
+
 
 const forgotOrderAuthenticatorIntoDb = async (
   payload: ForgotOrderPayload
@@ -208,10 +210,88 @@ const OrderTrackingIntoDb = async (orderId: string) => {
 
 
 
+
+
+// =========================
+// CHANGE ORDER STATUS FUNCTION
+// =========================
+const changeOrderTrackingStatusIntoDb = async (
+  orderId: string,
+  payload: Partial<TOrderTracking>
+) => {
+  try {
+    if (!orderId) {
+      throw new ApiError(httpStatus.BAD_REQUEST, "Invalid orderId");
+    }
+
+    // ✅ Filter only whitelisted fields
+    const filteredPayload = Object.fromEntries(
+      Object.entries(payload).filter(([key]) =>
+        allowedFields.includes(key as keyof TOrderTracking)
+      )
+    ) as Partial<TOrderTracking>;
+
+    if (!Object.keys(filteredPayload).length) {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        "No valid fields provided for update"
+      );
+    }
+
+    // 🔐 Find order tracking
+    const orderTrackingDoc = await ordertrackings.findOne({ orderId });
+
+    if (!orderTrackingDoc) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Order tracking not found");
+    }
+
+    // 🔐 Step-by-step validation
+    for (const stage of Object.keys(filteredPayload) as (keyof TOrderTracking)[]) {
+      const boolField = statusBooleanFieldMap[stage];
+      if (!boolField) continue; // skip if no boolean field
+
+      const stageValue = filteredPayload[stage] as any;
+
+      if (stageValue?.[boolField] === true) {
+        const stageIndex = statusFlow.indexOf(stage);
+        if (stageIndex > 0) {
+          const prevStage = statusFlow[stageIndex - 1];
+          const prevBoolField = statusBooleanFieldMap[prevStage];
+
+          const prevStageValue = orderTrackingDoc.get(prevStage) as any;
+
+          if (!prevStageValue?.[prevBoolField]) {
+            throw new ApiError(
+              httpStatus.BAD_REQUEST,
+              `Cannot update "${stage}" before "${prevStage}" is completed`
+            );
+          }
+        }
+      }
+    }
+
+    // ✅ Update the document
+    Object.assign(orderTrackingDoc, filteredPayload);
+    const updatedTracking = await orderTrackingDoc.save(); // triggers pre('save')
+
+    return {
+      status: true,
+      message: "Order tracking status updated successfully",
+      data: updatedTracking,
+    };
+  } catch (error) {
+    catchError(error);
+    throw error;
+  }
+};
+
+
+
 export const orderTrackingServices = {
   forgotOrderAuthenticatorIntoDb,
   findByMyOrderTrackingIntoDb,
-  OrderTrackingIntoDb
+  OrderTrackingIntoDb,
+  changeOrderTrackingStatusIntoDb
 };
 
 export default orderTrackingServices;
