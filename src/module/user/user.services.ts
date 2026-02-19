@@ -1,6 +1,6 @@
 import httpStatus from 'http-status';
 import ApiError from '../../app/error/ApiError';
-import emailcontext from '../../utility/emailcontext/sendvarificationData';
+// import emailcontext from '../../utility/emailcontext/sendvarificationData';
 import sendEmail from '../../utility/sendEmail';
 import users from './user.model';
 import { PROVIDER_AUTH, USER_ACCESSIBILITY } from './user.constant';
@@ -51,28 +51,28 @@ const createUserIntoDb = async (payload: TUser) => {
         ""
       );
     }
-    const { otp, hash } = generateOTP();
-
-    payload.verificationCode = hash;
-    const encryptedKey=cryptoUtils.generateKeyPair()
-    const user = new users({...payload , ...encryptedKey});
+    // const { otp, hash } = generateOTP();
+        payload.isVerify=true;
+    // payload.verificationCode = hash;
+    // const encryptedKey=cryptoUtils.generateKeyPair()
+    const user = new users({...payload });
     await user.save({ session });
 
     await session.commitTransaction();
     session.endSession();
-    await sendEmail(
-      payload.email,
-      emailcontext.sendVerificationData(
-        payload.email,
-        Number(otp), 
-        "User Verification Email"
-      ),
-      "Verification OTP Code"
-    );
+    // await sendEmail(
+    //   payload.email,
+    //   emailcontext.sendVerificationData(
+    //     payload.email,
+    //     Number(otp), 
+    //     "User Verification Email"
+    //   ),
+    //   "Verification OTP Code"
+    // );
 
     return {
       status: true,
-      message: "Check your email for verification code",
+      message: "successfully create an account",
     };
   } catch (error: unknown) {
     if (session.inTransaction()) {

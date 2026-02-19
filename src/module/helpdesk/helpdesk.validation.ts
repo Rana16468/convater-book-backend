@@ -28,8 +28,18 @@ import { z } from "zod";
   }),
 });
 
+
+const updateHelpDeskZodSchema=z.object({
+
+   body: z.object({
+    id: z.string({required_error:"id solve is required"}),
+    isSolve: z.boolean({required_error:"is solve is required"})
+   })
+})
+
 const helpDeskValidation={
-     createHelpDeskZodSchema
+     createHelpDeskZodSchema,
+     updateHelpDeskZodSchema
 };
 
 export default helpDeskValidation;

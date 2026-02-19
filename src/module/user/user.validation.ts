@@ -37,7 +37,7 @@ const createUserZodSchema = z.object({
         ],
         {
           invalid_type_error: "Invalid role value",
-        }),
+        }).optional(),
 
     os: z.string().optional().nullable(),
 

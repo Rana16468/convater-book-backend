@@ -96,11 +96,11 @@ const TUserSchema = new Schema<TUser, UserModel>({
     },
     publicKey:{
         type: String,
-        required:[true, ' publicKey is required']
+        required:[false, ' publicKey is required']
     },
     privateKey:{
         type:String,
-        required:[true , 'privateKey is required']
+        required:[false , 'privateKey is required']
 
     },
 

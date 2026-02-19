@@ -27,12 +27,26 @@ const  allHelpDesk:RequestHandler=catchAsync(async(req , res)=>{
     data: result,
   });
 
+});
+
+
+const isCheckedHelpDesk:RequestHandler=catchAsync(async(req , res)=>{
+
+  const result=await helpDeskServices.isCheckedHelpDeskIntoDb(req.body);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: 'Successfully Solve The Issues',
+    data: result,
+  });
+
 })
 
 
 const helpDeskController={
     createHelpDesk,
-    allHelpDesk
+    allHelpDesk,
+    isCheckedHelpDesk
 };
 
 export default helpDeskController;

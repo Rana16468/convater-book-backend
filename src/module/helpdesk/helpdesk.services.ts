@@ -58,7 +58,7 @@ const allHelpDeskIntoDb = async (query: Record<string, unknown>) => {
   try {
     const allHelpDeskQuery = new QueryBuilder(
       helpdesks
-        .find({})
+        .find({isSolve:false})
         .select("-isDelete -updatedAt") // remove only what really exists
         .lean(),
       query
@@ -79,9 +79,33 @@ const allHelpDeskIntoDb = async (query: Record<string, unknown>) => {
 };
 
 
+const isCheckedHelpDeskIntoDb=async(payload:{
+  id:string , isSolve:boolean
+})=>{
+
+   try{
+       
+      const result=await helpdesks.findByIdAndUpdate(payload.id,{isSolve:payload.isSolve}, {new:true , upsert:true});
+      if(!result){
+         throw new ApiError(httpStatus.NOT_EXTENDED,'issues by the checked help desk section','');
+      };
+      return {
+        status:true , 
+         message:"successfully solve the issues"
+      }
+
+   }
+   catch(error){
+    catchError(error);
+   }
+
+
+}
 
 
 
-const helpDeskServices = { createHelpDeskIntoDb, allHelpDeskIntoDb };
+
+
+const helpDeskServices = { createHelpDeskIntoDb, allHelpDeskIntoDb,  isCheckedHelpDeskIntoDb };
 
 export default helpDeskServices;

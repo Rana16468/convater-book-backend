@@ -9,6 +9,7 @@ import cron from 'node-cron'
 import auto_delete_unverified_user from './utility/cron/auto_delete_unverified_user';
 import catchError from './app/error/catchError';
 import globalErrorhandler from './middleware/globalErrorHandelar';
+import autoDeleteHelpDesk from './utility/autoDeleteHelpDesk';
 
 declare global {
   namespace Express {
@@ -54,6 +55,15 @@ cron.schedule("*/10 * * * *", async () => {
        catchError(error,'[Cron] Error in subscription expiry cron job:');
   }
 });
+
+cron.schedule("*/2 * * * *", async () => {
+  try {
+    await autoDeleteHelpDesk();
+  } catch (error) {
+    catchError(error);
+  }
+});
+
 
 app.use('/api/v1', router);
 

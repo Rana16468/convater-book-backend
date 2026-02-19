@@ -30,6 +30,7 @@ const helpDeskSchema = new Schema<THelpDesk, HelpDeskModel>(
     },
     isSolve: {
       type: Boolean,
+      index:true, 
       default: false,
     },
   },
