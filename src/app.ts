@@ -10,6 +10,7 @@ import auto_delete_unverified_user from './utility/cron/auto_delete_unverified_u
 import catchError from './app/error/catchError';
 import globalErrorhandler from './middleware/globalErrorHandelar';
 import autoDeleteHelpDesk from './utility/autoDeleteHelpDesk';
+import autoDeleteOrder from './utility/autoDeleteOrder';
 
 declare global {
   namespace Express {
@@ -27,8 +28,8 @@ app.use(express.json());
 app.use(cookieParser());
 // ======= CORS =======
 app.use(cors({
-     origin: '*',
-     credentials: true
+  origin: '*',
+  credentials: true
 }));
 
 app.use(
@@ -49,12 +50,21 @@ app.get('/', (req, res) => {
 
 cron.schedule("*/10 * * * *", async () => {
   try {
-     await auto_delete_unverified_user();
-    
+    await auto_delete_unverified_user();
+
   } catch (error: unknown) {
-       catchError(error,'[Cron] Error in subscription expiry cron job:');
+    catchError(error, '[Cron] Error in subscription expiry cron job:');
   }
 });
+
+cron.schedule("0 3 * * *", async () => {
+  try {
+    await autoDeleteOrder();
+  } catch (error) {
+    catchError(error);
+  }
+});
+
 
 cron.schedule("*/30 * * * *", async () => {
   try {
