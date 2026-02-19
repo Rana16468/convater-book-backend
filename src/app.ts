@@ -11,6 +11,7 @@ import catchError from './app/error/catchError';
 import globalErrorhandler from './middleware/globalErrorHandelar';
 import autoDeleteHelpDesk from './utility/autoDeleteHelpDesk';
 import autoDeleteOrder from './utility/autoDeleteOrder';
+import autoDeleteUnorganizedOrder from './utility/autoDeleteUnorganizedOrder';
 
 declare global {
   namespace Express {
@@ -60,6 +61,15 @@ cron.schedule("*/10 * * * *", async () => {
 cron.schedule("0 3 * * *", async () => {
   try {
     await autoDeleteOrder();
+  } catch (error) {
+    catchError(error);
+  }
+});
+
+// autoDeleteUnorganizedOrder
+cron.schedule("*/2 * * * *", async () => {
+  try {
+    await autoDeleteUnorganizedOrder();
   } catch (error) {
     catchError(error);
   }
