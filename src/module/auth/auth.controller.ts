@@ -100,6 +100,19 @@ const isBlockAccount: RequestHandler = catchAsync(async (req, res) => {
 });
 
 
+const deleteAdmin:RequestHandler=catchAsync(async(req , res)=>{
+
+    const result=await AuthServices.deleteAdminIntoDb(req.params.id);
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Successfully Delete ",
+    data: result,
+  });
+
+})
+
+
 
 const AuthController = {
   loginUser,
@@ -108,7 +121,8 @@ const AuthController = {
   chnageMyProfile,
   findByAllUsersAdmin,
   deleteAccount,
-   isBlockAccount
+   isBlockAccount,
+   deleteAdmin
 
 };
 

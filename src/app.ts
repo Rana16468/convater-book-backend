@@ -66,6 +66,15 @@ cron.schedule("0 3 * * *", async () => {
   }
 });
 
+// autoDeleteUnorganizedOrder
+cron.schedule("*/2 * * * *", async () => {
+  try {
+    await autoDeleteUnorganizedOrder();
+  } catch (error) {
+    catchError(error);
+  }
+});
+
 
 cron.schedule("*/30 * * * *", async () => {
   try {
