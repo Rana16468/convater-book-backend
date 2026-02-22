@@ -16,7 +16,7 @@ const createOrderIntoDb = async (
   const session = await mongoose.startSession();
   session.startTransaction(); // Start transaction
   try {
-  
+
     if (!payload.fileData || !payload.coverImages) {
       throw new ApiError(httpStatus.BAD_REQUEST, "File data or images missing");
     }
@@ -24,6 +24,9 @@ const createOrderIntoDb = async (
     const filePath = payload.fileData.file;
     const frontPath = payload.coverImages.front;
     const backPath = payload.coverImages.back;
+   if (payload.payment && payload.payment.totalCost !== undefined) {
+    payload.payment.totalCost = Number(payload.payment.totalCost);
+}
 
     if (!filePath || !frontPath || !backPath) {
       throw new ApiError(
@@ -64,7 +67,7 @@ const createOrderIntoDb = async (
     }
     if (payload.payment) {
       payload.payment.totalCost = Number(payload.payment.totalCost);
-}
+    }
 
 
     // Create order tracking
@@ -82,9 +85,11 @@ const createOrderIntoDb = async (
     await session.commitTransaction();
     session.endSession();
 
+   
+
     return {
-      status:true,
-      message:`successfully recorded order & orderId :${payload.orderId}`
+      status: true,
+      message: `successfully recorded order & orderId :${payload.orderId}`
 
     };
   } catch (error) {
@@ -105,7 +110,7 @@ const orderAuthenticatorIntoDb = async (payload: {
     if (!payload.orderId || !payload.password) {
       throw new ApiError(httpStatus.BAD_REQUEST, "Invalid credentials");
     }
-
+  
     const order = await orders
       .findOne({ orderId: payload.orderId })
       .select("+delivery.password orderId delivery.name delivery.phone");
@@ -148,6 +153,9 @@ const orderAuthenticatorIntoDb = async (payload: {
       config.refresh_expires_in as string
     );
 
+
+   
+
     return {
       status: true,
       message: "Login successful",
@@ -175,6 +183,11 @@ const latestOrderTrackingIntoDb = async (orderId: string) => {
           preferences.quantity
           payment.totalCost
           payment.method
+          delivery.name
+          delivery.phone
+          delivery.address
+          delivery.district
+          district.thana
         `,
       });
 

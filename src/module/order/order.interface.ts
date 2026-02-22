@@ -28,7 +28,7 @@ export interface TOrder {
   payment: {
     method: string;
     transactionId: string;
-    totalCost:number;
+    totalCost:number | undefined;
 
     voucher?: string;
   };

@@ -9,8 +9,7 @@ const deliverySchema = z.object({
   phone: z.string().min(5, "Phone is required"),
   address: z.string().min(5, "Address is required"),
   password: z
-    .string()
-    .min(6, "Password must be at least 6 characters"),
+    .string(),
   district: z.string().min(1, "District is required"),
   thana: z.string().min(1, "Thana is required"),
 });
@@ -36,7 +35,7 @@ const paymentSchema = z.object({
   method: z.enum(["bkash", "nagad", "rocket", "cash"], {
     required_error: "Payment method is required",
   }),
-  totalCost:z.string().min(2, "totalCost is required"),
+  totalCost:z.string(),
   transactionId: z.string().min(1, "Transaction ID is required"),
   voucher: z.string().optional(),
 });
@@ -80,7 +79,7 @@ const preferencesSchema = z.object({
 
     preferences: preferencesSchema,
 
-    ipAddress: z.string().min(1, "IP Address is required"),
+    ipAddress: z.string().optional(),
 
     showErrors: z.boolean().optional(),
     showToast: z.boolean().optional(),

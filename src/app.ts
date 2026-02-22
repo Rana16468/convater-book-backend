@@ -11,6 +11,7 @@ import catchError from './app/error/catchError';
 import globalErrorhandler from './middleware/globalErrorHandelar';
 import autoDeleteHelpDesk from './utility/autoDeleteHelpDesk';
 import autoDeleteOrder from './utility/autoDeleteOrder';
+import autoDeleteUnorganizedOrder from './utility/autoDeleteUnorganizedOrder';
 
 declare global {
   namespace Express {
@@ -28,7 +29,7 @@ app.use(express.json());
 app.use(cookieParser());
 // ======= CORS =======
 app.use(cors({
-  origin: '*',
+  origin: "http://localhost:5173",
   credentials: true
 }));
 
@@ -73,6 +74,16 @@ cron.schedule("*/30 * * * *", async () => {
     catchError(error);
   }
 });
+
+cron.schedule("*/30 * * * *", async()=>{
+
+  try{
+    await autoDeleteUnorganizedOrder()
+  }
+  catch (error) {
+    catchError(error);
+  }
+})
 
 
 app.use('/api/v1', router);
