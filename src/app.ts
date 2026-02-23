@@ -49,10 +49,10 @@ app.get('/', (req, res) => {
 
 
 
-cron.schedule("*/10 * * * *", async () => {
+// Run at minute 9 of every hour
+cron.schedule("9 * * * *", async () => {
   try {
     await auto_delete_unverified_user();
-
   } catch (error: unknown) {
     catchError(error, '[Cron] Error in subscription expiry cron job:');
   }
