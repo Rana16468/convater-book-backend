@@ -87,7 +87,7 @@ const forgotOrderAuthenticatorIntoDb = async (
     throw catchError(error);
   }
 };
- const findByMyOrderTrackingIntoDb = async (
+const findByMyOrderTrackingIntoDb = async (
   phone: string,
 
   query: Record<string, unknown>
@@ -199,6 +199,11 @@ const OrderTrackingIntoDb = async (orderId: string) => {
           preferences.quantity
           payment.totalCost
           payment.method
+           delivery.name
+          delivery.phone
+          delivery.address
+          delivery.district
+          district.thana
         `,
       });
 
