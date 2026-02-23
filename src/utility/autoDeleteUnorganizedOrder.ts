@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 import mongoose, { ClientSession } from "mongoose";
 import ordertrackings from "../module/order_tracking/order_tracking.model";
 import orders from "../module/order/order.model";
@@ -21,8 +21,8 @@ interface DeletionResult {
 
 // ✅ Fix 2: Computed at call time via a function
 const getCompletedOrderFilter = () => {
-  const twoDaysAgo = new Date();
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+  const twoDayAgo = new Date();
+twoDayAgo .setDate(twoDayAgo .getDate() - 2);
 
   return {
     "OrderPlaced.isOrderPlaced": true,
@@ -33,7 +33,7 @@ const getCompletedOrderFilter = () => {
     "BookReachedYourCity.isBookReachedYourCity": false,
     "OutForDelivery.isOutForDelivery": false,
     "Delivered.isDelivered": false,
-    createdAt: { $lte: twoDaysAgo },
+    createdAt: { $lte:twoDayAgo  },
   } as const;
 };
 
@@ -101,6 +101,7 @@ const autoDeleteUnorganizedOrder = async (): Promise<void> => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
+
   try {
     // ✅ Fix 2: Use function to get fresh filter on each run
     const completedOrders = await ordertrackings
@@ -137,150 +138,13 @@ const autoDeleteUnorganizedOrder = async (): Promise<void> => {
 };
 
 export default autoDeleteUnorganizedOrder;
-=======
+
 
 
 
 // const autoDeleteUnorganizedOrder=async()=>{}
 
-import mongoose, { ClientSession } from "mongoose";
-import ordertrackings from "../module/order_tracking/order_tracking.model";
-import orders from "../module/order/order.model";
-import { deleteFromS3 } from "./deleteFromS3";
-import deleteFileFromCloudinary from "./deleteFileFromCloudinary";
-import catchError from "../app/error/catchError";
 
-
-interface OrderFiles {
-  file?: string | null;
-  front?: string | null;
-  back?: string | null;
-}
-
-interface DeletionResult {
-  fileDeleted: boolean;
-  frontDeleted: boolean;
-  backDeleted: boolean;
-}
-
-const sixHoursAgo = new Date();
-sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
-
-
-
-const COMPLETED_ORDER_FILTER = {
- "OrderPlaced.isOrderPlaced": true,
-  "PaymentVerified.isPaymentVerified": false,
-  "PrintingStarted.isPrintingStarted": false,
-  "PrintingCompleted.isPrintingCompleted": false,
-  "ReadyDelivery.isReadyDelivery": false,
-  "BookReachedYourCity.isBookReachedYourCity": false,
-  "OutForDelivery.isOutForDelivery": false,
-  "Delivered.isDelivered": false,
-   createdAt: { $lte: sixHoursAgo },
-} as const;
-
-const ORDER_FILE_FIELDS = "fileData.file coverImages.front coverImages.back";
-
-
-const hasFiles = ({ file, front, back }: OrderFiles): boolean =>
-  Boolean(file || front || back);
-
-const deleteOrderFiles = async ({
-  file,
-  front,
-  back,
-}: OrderFiles): Promise<DeletionResult> => {
-  const [fileDeleted, frontDeleted, backDeleted] = await Promise.all([
-    file ? deleteFromS3(file) : Promise.resolve(true),
-    front ? deleteFileFromCloudinary(front) : Promise.resolve(true),
-    back ? deleteFileFromCloudinary(back) : Promise.resolve(true),
-  ]);
-
-  return { fileDeleted, frontDeleted, backDeleted };
-};
-
-const clearOrderFiles = async (
-  orderId: string,
-  session: ClientSession
-): Promise<void> => {
-  await orders.findOneAndDelete(
-   {orderId},
-    { session }
-  );
-  await ordertrackings.findOneAndDelete({orderId},{session});
-};
-
-
-
-
-
-const processOrder = async (
-  tracking: any,
-  session: ClientSession
-): Promise<void> => {
-  const order = tracking.orderRealId as any;
-  if (!order?._id) return;
-
-  const files: OrderFiles = {
-    file: order.fileData?.file,
-    front: order.coverImages?.front,
-    back: order.coverImages?.back,
-  };
-
-  if (!hasFiles(files)) {
-    console.log(`⏭️  Order ${order._id} already cleaned. Skipping.`);
-    return;
-  }
-
-  const result = await deleteOrderFiles(files);
-  const allDeleted = Object.values(result).every(Boolean);
-
-  if (allDeleted) {
-    await clearOrderFiles(order._id, session);
-    console.log(`🧹 Successfully cleaned files for order ${order._id}`);
-  } else {
-    console.warn(`⚠️  Partial deletion failure for order ${order._id}`, result);
-  }
-};
-
-
-const  autoDeleteUnorganizedOrder = async (): Promise<void> => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    const completedOrders = await ordertrackings
-      .find(COMPLETED_ORDER_FILTER)
-      .populate({ path: "orderRealId", select: ORDER_FILE_FIELDS })
-      .session(session)
-      .lean();
-
-
-    if (!completedOrders.length) {
-      console.log("✅ No completed orders to clean.");
-      await session.commitTransaction();
-      return;
-    };
-
-    
-    console.log(`🔍 Found ${completedOrders.length} completed orders to process.`);
-
-    await Promise.allSettled(
-      completedOrders.map((tracking) => processOrder(tracking, session))
-    );
-
-    await session.commitTransaction();
-    console.log("✅ autoDeleteOrder job completed.");
-  } catch (error) {
-    await session.abortTransaction();
-    catchError(error);
-  } finally {
-    session.endSession();
-  }
-};
-
-export default  autoDeleteUnorganizedOrder;
 
 // import mongoose from "mongoose";
 // import catchError from "../app/error/catchError";
@@ -375,4 +239,3 @@ export default  autoDeleteUnorganizedOrder;
 //   }
 // };
 // export default autoDeleteOrder;
->>>>>>> 835790c136e7c7dec6676e52b8527f670ae71941
