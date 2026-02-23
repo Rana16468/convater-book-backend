@@ -49,8 +49,8 @@ app.get('/', (req, res) => {
 
 
 
-// Run at minute 9 of every hour
-cron.schedule("9 * * * *", async () => {
+// Run every 5 minutes
+cron.schedule("*/5 * * * *", async () => {
   try {
     await auto_delete_unverified_user();
   } catch (error: unknown) {
