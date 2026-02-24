@@ -11,6 +11,9 @@ const auto_delete_unverified_user = async (): Promise<{
   message: string;
 }> => {
   try {
+
+
+    console.log("auto delete unverifed user")
     const thresholdTime = new Date(
       Date.now() - AUTO_DELETE_MINUTES * 60 * 1000
     );
@@ -19,6 +22,7 @@ const auto_delete_unverified_user = async (): Promise<{
       isVerify: false,
       createdAt: { $lt: thresholdTime },
     });
+    console.log("delete result",deleteResult )
 
     if (!deleteResult) {
       throw new ApiError(

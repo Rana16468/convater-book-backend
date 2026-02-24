@@ -72,7 +72,7 @@ const orderSchema = new Schema<TOrder, OrderModel,TOrderResult >(
     
  ipAddress:{
      type: String,
-     index:true,
+     index:false,
       required: true
  },
     showErrors: Boolean,
