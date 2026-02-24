@@ -5,7 +5,6 @@ import { deleteFromS3 } from "./deleteFromS3";
 import deleteFileFromCloudinary from "./deleteFileFromCloudinary";
 import catchError from "../app/error/catchError";
 
-
 interface OrderFiles {
   file?: string | null;
   front?: string | null;
@@ -17,7 +16,6 @@ interface DeletionResult {
   frontDeleted: boolean;
   backDeleted: boolean;
 }
-
 
 const COMPLETED_ORDER_FILTER = {
   "OrderPlaced.isOrderPlaced": true,
@@ -32,19 +30,39 @@ const COMPLETED_ORDER_FILTER = {
 
 const ORDER_FILE_FIELDS = "fileData.file coverImages.front coverImages.back";
 
-
 const hasFiles = ({ file, front, back }: OrderFiles): boolean =>
   Boolean(file || front || back);
+
+// ✅ FIX: Each delete wrapped in try/catch returning boolean
+// because deleteFileFromCloudinary now returns void (throws on failure)
+const safeDeleteFromS3 = async (url: string): Promise<boolean> => {
+  try {
+    await deleteFromS3(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const safeDeleteFromCloudinary = async (url: string): Promise<boolean> => {
+  try {
+    await deleteFileFromCloudinary(url); // returns void, throws on failure
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 const deleteOrderFiles = async ({
   file,
   front,
   back,
 }: OrderFiles): Promise<DeletionResult> => {
+  // ✅ FIX: Use safe wrappers that always return boolean
   const [fileDeleted, frontDeleted, backDeleted] = await Promise.all([
-    file ? deleteFromS3(file) : Promise.resolve(true),
-    front ? deleteFileFromCloudinary(front) : Promise.resolve(true),
-    back ? deleteFileFromCloudinary(back) : Promise.resolve(true),
+    file ? safeDeleteFromS3(file) : Promise.resolve(true),
+    front ? safeDeleteFromCloudinary(front) : Promise.resolve(true),
+    back ? safeDeleteFromCloudinary(back) : Promise.resolve(true),
   ]);
 
   return { fileDeleted, frontDeleted, backDeleted };
@@ -66,9 +84,6 @@ const clearOrderFiles = async (
     { session }
   );
 };
-
-
-
 
 const processOrder = async (
   tracking: any,
@@ -95,10 +110,14 @@ const processOrder = async (
     await clearOrderFiles(order._id, session);
     console.log(`🧹 Successfully cleaned files for order ${order._id}`);
   } else {
-    console.warn(`⚠️  Partial deletion failure for order ${order._id}`, result);
+    // ✅ FIX: Log exactly which deletions failed for easier debugging
+    console.warn(`⚠️  Partial deletion failure for order ${order._id}`, {
+      s3File: result.fileDeleted ? "✅" : "❌",
+      cloudinaryFront: result.frontDeleted ? "✅" : "❌",
+      cloudinaryBack: result.backDeleted ? "✅" : "❌",
+    });
   }
 };
-
 
 const autoDeleteOrder = async (): Promise<void> => {
   const session = await mongoose.startSession();
@@ -119,9 +138,19 @@ const autoDeleteOrder = async (): Promise<void> => {
 
     console.log(`🔍 Found ${completedOrders.length} completed orders to process.`);
 
-    await Promise.allSettled(
+    // ✅ FIX: Use allSettled but log rejected cases so nothing is silently swallowed
+    const results = await Promise.allSettled(
       completedOrders.map((tracking) => processOrder(tracking, session))
     );
+
+    results.forEach((result, index) => {
+      if (result.status === "rejected") {
+        console.error(
+          `❌ Failed to process order at index ${index}:`,
+          result.reason
+        );
+      }
+    });
 
     await session.commitTransaction();
     console.log("✅ autoDeleteOrder job completed.");
@@ -129,102 +158,9 @@ const autoDeleteOrder = async (): Promise<void> => {
     await session.abortTransaction();
     catchError(error);
   } finally {
+    // ✅ FIX: endSession always in finally, not duplicated in try block
     session.endSession();
   }
 };
 
 export default autoDeleteOrder;
-
-// import mongoose from "mongoose";
-// import catchError from "../app/error/catchError";
-// import ordertrackings from "../module/order_tracking/order_tracking.model";
-// import { deleteFromS3 } from "./deleteFromS3";
-// import deleteFileFromCloudinary from "./deleteFileFromCloudinary";
-// import orders from "../module/order/order.model";
-// const autoDeleteOrder = async () => {
-//   const session = await mongoose.startSession();
-//   try {
-//     session.startTransaction();
-//     const completedOrders = await ordertrackings
-//       .find({
-//         "OrderPlaced.isOrderPlaced": true,
-//         "PaymentVerified.isPaymentVerified": true,
-//         "PrintingStarted.isPrintingStarted": true,
-//         "PrintingCompleted.isPrintingCompleted": true,
-//         "ReadyDelivery.isReadyDelivery": true,
-//         "BookReachedYourCity.isBookReachedYourCity": true,
-//         "OutForDelivery.isOutForDelivery": true,
-//         "Delivered.isDelivered": true,
-//       })
-//       .populate({
-//         path: "orderRealId",
-//         select: `
-//           fileData.file
-//           coverImages.front
-//           coverImages.back
-//         `,
-//       })
-//       .session(session);
-//       console.log("completedOrders",completedOrders)
-//     if (!completedOrders.length) {
-//       console.log("✅ No completed orders to clean.");
-//       await session.commitTransaction();
-//       session.endSession();
-//       return;
-//     }
-//     for (const tracking of completedOrders) {
-//       const order = tracking.orderRealId as any;
-//       if (!order) continue;
-//       const file = order.fileData?.file;
-//       const front = order.coverImages?.front;
-//       const back = order.coverImages?.back;
-//       // Skip if already cleaned
-//       if (!file && !front && !back) continue;
-//       let fileDeleted = false;
-//       let frontDeleted = false;
-//       let backDeleted = false;
-//       // Delete S3 file
-//       if (file) {
-//         fileDeleted = await deleteFromS3(file);
-//         console.log(fileDeleted);
-//       }
-//       // Delete Cloudinary front
-//       if (front) {
-//         frontDeleted = await deleteFileFromCloudinary(front);
-//         console.log(frontDeleted);
-//       }
-//       // Delete Cloudinary back
-//       if (back) {
-//         backDeleted = await deleteFileFromCloudinary(back);
-//         console.log(backDeleted);
-//       }
-//       // ✅ Only update DB if ALL deletions succeeded
-//       if (fileDeleted && frontDeleted && backDeleted) {
-//         await orders.findByIdAndUpdate(
-//           order._id,
-//           {
-//             $set: {
-//               "fileData.file": null,
-//               "coverImages.front": null,
-//               "coverImages.back": null,
-//             },
-//           },
-//           { session }
-//         );
-//         console.log(`🧹 Cleaned files for order ${order._id}`);
-//       } else {
-//         console.warn(
-//           `⚠️ Partial delete failed for order ${order._id}`,
-//           { fileDeleted, frontDeleted, backDeleted }
-//         );
-//       }
-//     }
-//     await session.commitTransaction();
-//     session.endSession();
-//   } catch (error) {
-//     await session.abortTransaction();
-//     session.endSession();
-//     catchError(error);
-//   }
-// };
-// export default autoDeleteOrder;
