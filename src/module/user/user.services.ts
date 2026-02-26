@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import ApiError from '../../app/error/ApiError';
 // import emailcontext from '../../utility/emailcontext/sendvarificationData';
 import sendEmail from '../../utility/sendEmail';
-import users from './user.model';
+
 import { PROVIDER_AUTH, USER_ACCESSIBILITY } from './user.constant';
 import { TUser } from './user.interface';
 import mongoose from 'mongoose';
@@ -15,6 +15,7 @@ import catchError from '../../app/error/catchError';
 import cryptoUtils from '../../utility/cryptoUtils/cryptoUtils';
 import profileEncrypted from '../../utility/cryptoUtils/profileEncrypted';
 import deleteFileFromCloudinary from '../../utility/deleteFileFromCloudinary';
+import adminusers from './user.model';
 
 
 
@@ -30,18 +31,14 @@ import deleteFileFromCloudinary from '../../utility/deleteFileFromCloudinary';
 };
 
 const createUserIntoDb = async (payload: TUser) => {
-  const session = await mongoose.startSession();
-
   try {
-    session.startTransaction();
-    const isExistUser = await users.findOne(
+    const isExistUser = await adminusers.findOne(
       {
         email: payload.email,
         isVerify: true,
         status: USER_ACCESSIBILITY.isProgress,
       },
-      { _id: 1 },
-      { session }
+      { _id: 1 }
     );
 
     if (isExistUser) {
@@ -51,36 +48,21 @@ const createUserIntoDb = async (payload: TUser) => {
         ""
       );
     }
-    // const { otp, hash } = generateOTP();
-        payload.isVerify=true;
-    // payload.verificationCode = hash;
-    // const encryptedKey=cryptoUtils.generateKeyPair()
-    const user = new users({...payload });
-    await user.save({ session });
 
-    await session.commitTransaction();
-    session.endSession();
-    // await sendEmail(
-    //   payload.email,
-    //   emailcontext.sendVerificationData(
-    //     payload.email,
-    //     Number(otp), 
-    //     "User Verification Email"
-    //   ),
-    //   "Verification OTP Code"
-    // );
+    payload.isVerify = true;
+
+   
+
+    const user = new adminusers({ ...payload });
+    await user.save();
 
     return {
       status: true,
-      message: "successfully create an account",
+      message: "Successfully created an account",
     };
-  } catch (error: unknown) {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-    }
-    session.endSession();
 
-    catchError(error, '"Server unavailable create account function ')
+  } catch (error: unknown) {
+    catchError(error, "Server unavailable create account function");
   }
 };
 
@@ -99,7 +81,7 @@ const userVarificationIntoDb = async (verificationCode: string) => {
     .update(verificationCode)
     .digest("hex");
 
-  const user = await users.findOneAndUpdate({
+  const user = await adminusers.findOneAndUpdate({
     verificationCode: hashedCode
     
   },{isVerify:true},{new:true , upsert:true});
@@ -150,7 +132,7 @@ const changePasswordIntoDb = async (
 ) => {
   try {
    
-    const user = await users
+    const user = await adminusers
       .findOne(
         {
           _id: userId,
@@ -170,7 +152,7 @@ const changePasswordIntoDb = async (
 
 
    
-    const isOldPasswordValid = await users.isPasswordMatched(
+    const isOldPasswordValid = await adminusers.isPasswordMatched(
       payload.oldpassword,
       user.password,
     );
@@ -195,22 +177,19 @@ const changePasswordIntoDb = async (
       );
     }
 
-    const passwordRegex =
-      /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
+    
 
-    if (!passwordRegex.test(payload.newpassword)) {
-      throw new ApiError(
-        httpStatus.BAD_REQUEST,
-        'Password must be at least 8 characters and include letters, numbers, and symbols', ""
-      );
-    }
+    console.log("new password", payload.newpassword);
+
+
 
     const hashedPassword = await bcrypt.hash(
       payload.newpassword,
       Number(config.bcrypt_salt_rounds),
     );
+    console.log("hashedPassword", hashedPassword)
 
-    const updated = await users.findByIdAndUpdate(
+    const updated = await adminusers.findByIdAndUpdate(
       userId,
       {
         password: hashedPassword,
@@ -225,6 +204,10 @@ const changePasswordIntoDb = async (
         'Failed to update password', ""
       );
     }
+
+    console.log("updated", updated);
+
+
 
     return {
       success: true,
@@ -254,7 +237,7 @@ const forgotPasswordIntoDb = async (payload: string | { email: string }) => {
       throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid email format', '');
     }
 
-    const isExistUser = await users.findOne(
+    const isExistUser = await adminusers.findOne(
       {
         $and: [
           { email: emailString },
@@ -278,7 +261,7 @@ const forgotPasswordIntoDb = async (payload: string | { email: string }) => {
 
     
 
-    const result = await users.findOneAndUpdate(
+    const result = await adminusers.findOneAndUpdate(
       { _id: isExistUser._id },
       { verificationCode:  hash },
       {
@@ -343,7 +326,7 @@ const verificationForgotUserIntoDb = async (
     .update(verificationCode)
     .digest("hex");
 
-  const user = await users.findOne(
+  const user = await adminusers.findOne(
     {
       verificationCode: hashedCode,
       isVerify: true,
@@ -401,7 +384,7 @@ const verificationForgotUserIntoDb = async (
     config.expires_in as string
   );
 
-  await users.updateOne(
+  await adminusers.updateOne(
     { _id: user._id },
     {
       $unset: {
@@ -434,7 +417,7 @@ const resetPasswordIntoDb = async (payload: {
   password: string;
 }) => {
   try {
-    const isExistUser = await users.findOne(
+    const isExistUser = await adminusers.findOne(
       {
         $and: [
           { _id: payload.userId },
@@ -456,7 +439,7 @@ const resetPasswordIntoDb = async (payload: {
       Number(config.bcrypt_salt_rounds),
     );
 
-    const result = await users.findByIdAndUpdate(
+    const result = await adminusers.findByIdAndUpdate(
       isExistUser._id,
       { password: payload.password },
       { new: true, upsert: true },
@@ -470,7 +453,7 @@ const resetPasswordIntoDb = async (payload: {
 
 const googleAuthIntoDb = async (payload: TUser) => {
   try {
-    let user = await users.findOne(
+    let user = await adminusers.findOne(
       {
         email: payload.email,
         isVerify: true,
@@ -496,7 +479,7 @@ const googleAuthIntoDb = async (payload: TUser) => {
       payload.photo = profileEncrypted.encryptPhoto(payload.photo);
     }
     if (user && !user.password) {
-      const result = await users.findByIdAndUpdate(
+      const result = await adminusers.findByIdAndUpdate(
         user._id,
         payload,
         { new: true, upsert: true }
@@ -518,7 +501,7 @@ const googleAuthIntoDb = async (payload: TUser) => {
         payload.photo = profileEncrypted.encryptPhoto(payload.photo);
       }
 
-      const newUser = new users({ ...payload, ...encryptedKey });
+      const newUser = new adminusers({ ...payload, ...encryptedKey });
       user = await newUser.save();
     }
 
@@ -559,7 +542,7 @@ const getUserGrowthIntoDb = async (query: { year?: string }) => {
     const previousYear = year - 1;
 
     // Get current year stats
-    const currentYearStats = await users.aggregate([
+    const currentYearStats = await adminusers.aggregate([
       {
         $match: {
           createdAt: {
@@ -625,7 +608,7 @@ const getUserGrowthIntoDb = async (query: { year?: string }) => {
     ]);
 
     // Get previous year total count
-    const previousYearStats = await users.aggregate([
+    const previousYearStats = await adminusers.aggregate([
       {
         $match: {
           createdAt: {
@@ -678,7 +661,7 @@ const resendVerificationOtpIntoDb = async (email: string) => {
   }
 
   // 1️⃣ Find user
-  const user = await users.findOne(
+  const user = await adminusers.findOne(
     {
       email,
       isVerify:true,
@@ -706,7 +689,7 @@ const resendVerificationOtpIntoDb = async (email: string) => {
   }
 
   const { otp, hash } = generateOTP();
-  await users.updateOne(
+  await adminusers.updateOne(
     { _id: user._id },
     {
       verificationCode: hash,

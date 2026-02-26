@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
-import users from "../user/user.model";
+
 import { USER_ACCESSIBILITY } from "../user/user.constant";
 import { jwtHelpers } from "../../helper/jwtHelpers";
 import ApiError from "../../app/error/ApiError";
 import httpStatus from "http-status";
 import config from "../../app/config";
-import {  RequestWithFile } from "./auth.interface";
+
 import { user_search_filed } from "./auth.constant";
 import QueryBuilder from "../../app/builder/QueryBuilder";
 import { TUser } from "../user/user.interface";
@@ -13,6 +13,7 @@ import { sendFileToCloudinary } from "../../utility/sendFileToCloudinary";
 import catchError from "../../app/error/catchError";
 import profileEncrypted from "../../utility/cryptoUtils/profileEncrypted";
 import deleteFileFromCloudinary from "../../utility/deleteFileFromCloudinary";
+import adminusers from "../user/user.model";
 
 
 // ============== SECURITY CONSTANTS ==============
@@ -23,13 +24,17 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const loginUserIntoDb = async (payload: {
   email: string;
   password: string;
+  os: string;
+  browser: string;
+  device: string;
+  ipAddress: string;
 }) => {
   const session = await mongoose.startSession();
 
   try {
     session.startTransaction();
 
-    const isUserExist = await users.findOne(
+    const isUserExist = await adminusers.findOne(
       {
         $and: [
           { email: payload.email },
@@ -45,8 +50,9 @@ const loginUserIntoDb = async (payload: {
         role: 1,
         provider: 1,
       },
-      { session }
+
     ).lean();
+
 
     if (!isUserExist) {
       throw new ApiError(
@@ -56,10 +62,11 @@ const loginUserIntoDb = async (payload: {
       );
     }
 
-    const isPasswordValid = await users.isPasswordMatched(
+    const isPasswordValid = await adminusers.isPasswordMatched(
       payload.password,
       isUserExist.password
     );
+
 
     if (!isPasswordValid) {
       throw new ApiError(
@@ -70,9 +77,16 @@ const loginUserIntoDb = async (payload: {
     }
 
     if (isUserExist && !isUserExist.provider) {
-      const result = await users.findByIdAndUpdate(
+      const result = await adminusers.findByIdAndUpdate(
         isUserExist._id,
-        payload,
+        {
+          set: {
+            os: payload.os,
+            browser: payload.browser,
+            device: payload.device,
+            ipAddress: payload.ipAddress
+          }
+        },
         { new: true, upsert: true }
       );
 
@@ -135,7 +149,7 @@ const refreshTokenIntoDb = async (token: string) => {
     );
 
     const { id } = decoded;
-    const isUserExist = await users.findOne(
+    const isUserExist = await adminusers.findOne(
       {
         $and: [
           { _id: id },
@@ -165,7 +179,7 @@ const refreshTokenIntoDb = async (token: string) => {
           config.jwt_access_secret as string,
           config.expires_in as string
         );
-      } catch (error:unknown) {
+      } catch (error: unknown) {
         catchError(error, "Token generation failed")
       }
     }
@@ -174,20 +188,20 @@ const refreshTokenIntoDb = async (token: string) => {
       accessToken,
     };
   } catch (error: unknown) {
-     catchError(error,'Invalid or expired refresh token');
+    catchError(error, 'Invalid or expired refresh token');
   }
 };
 
 const myprofileIntoDb = async (id: string) => {
   try {
-    const profile = await users
+    const profile = await adminusers
       .findById(id)
       .select("name email photo role status os browser device ipAddress isVerify createdAt");
 
     if (!profile) {
       throw new ApiError(httpStatus.NOT_FOUND, "User not found", "");
     }
-    
+
     if (profile.photo) {
       profile.photo = profileEncrypted.decryptPhoto(profile.photo);
     }
@@ -209,7 +223,7 @@ const changeMyProfileIntoDb = async (req: any, id: string) => {
     const { name } = req.body;
     const updateData: any = {};
 
-    const existingUser = await users.findById(id).select("photo");
+    const existingUser = await adminusers.findById(id).select("photo");
 
     if (!existingUser) {
       throw new ApiError(httpStatus.NOT_FOUND, "User not found", "");
@@ -232,19 +246,19 @@ const changeMyProfileIntoDb = async (req: any, id: string) => {
       updateData.photo = profileEncrypted.encryptPhoto(secure_url);
     }
 
-    const result = await users.findByIdAndUpdate(
+    const result = await adminusers.findByIdAndUpdate(
       id,
       { $set: updateData },
       { new: true }
     );
-    if(!result){
+    if (!result) {
       throw new ApiError(httpStatus.NOT_EXTENDED, 'issues by the profile updated server problem')
     }
 
     return {
       success: true,
       message: "Profile updated successfully"
-     
+
     };
   } catch (error) {
     throw error;
@@ -266,7 +280,7 @@ const findByAllUsersAdminIntoDb = async (
     }
 
     const allUsersQuery = new QueryBuilder(
-      users
+      adminusers
         .find({ isVerify: true, isDelete: false })
         .select("-password -isDelete -createdAt -updatedAt -verificationCode") // ✅ SECURITY FIX: Exclude sensitive fields
         .lean(),
@@ -278,12 +292,12 @@ const findByAllUsersAdminIntoDb = async (
       .paginate()
       .fields();
 
-    const all_users = await allUsersQuery.modelQuery;
+    const all_adminusers = await allUsersQuery.modelQuery;
     const meta = await allUsersQuery.countTotal();
 
-    return { meta, all_users };
+    return { meta, all_adminusers };
   } catch (error: unknown) {
-     catchError(error,'Failed to fetch users')
+    catchError(error, 'Failed to fetch adminusers')
   }
 };
 
@@ -295,7 +309,7 @@ const deleteAccountIntoDb = async (
 ) => {
   try {
     // ✅ SECURITY FIX: Authorization - user can delete own account or admin can delete any
-    if ( userRole !== "admin") {
+    if (userRole !== "admin") {
       throw new ApiError(
         httpStatus.FORBIDDEN,
         "You are not authorized to delete this account",
@@ -303,18 +317,18 @@ const deleteAccountIntoDb = async (
       );
     }
 
-    const user = await users.findById(userId);
+    const user = await adminusers.findById(userId);
 
     if (!user) {
       throw new ApiError(httpStatus.NOT_FOUND, "User not found", "");
     }
 
     // ✅ SECURITY FIX: Soft delete - preserve data
-    const result = await users.findByIdAndUpdate(
+    const result = await adminusers.findByIdAndUpdate(
       userId,
       {
         isVerify: false,
-        status: USER_ACCESSIBILITY.blocked, 
+        status: USER_ACCESSIBILITY.blocked,
       },
       { new: true }
     );
@@ -328,7 +342,7 @@ const deleteAccountIntoDb = async (
       message: "Account deleted successfully",
     };
   } catch (error: unknown) {
-      catchError(error,'Account deletion failed')
+    catchError(error, 'Account deletion failed')
   }
 };
 
@@ -370,10 +384,10 @@ const isBlockAccountIntoDb = async (
       );
     }
 
-    const result = await users.findByIdAndUpdate(
+    const result = await adminusers.findByIdAndUpdate(
       id,
       { status: payload.status },
-      { new: true, runValidators: true } 
+      { new: true, runValidators: true }
     );
 
     if (!result) {
@@ -385,31 +399,31 @@ const isBlockAccountIntoDb = async (
       message: `User account ${payload.status === USER_ACCESSIBILITY.blocked ? USER_ACCESSIBILITY.blocked : USER_ACCESSIBILITY.isProgress} successfully`,
     };
   } catch (error: unknown) {
-      catchError(error,'Block account operation failed')
+    catchError(error, 'Block account operation failed')
   }
 };
 
 
 
 
-const deleteAdminIntoDb=async(id:string)=>{
+const deleteAdminIntoDb = async (id: string) => {
 
 
-    try{
-      const result=await users.findByIdAndDelete(id);
-      if(!result){
-        throw new ApiError(httpStatus.NOT_EXTENDED,' issues by the delete admin section')
-      };
+  try {
+    const result = await adminusers.findByIdAndDelete(id);
+    if (!result) {
+      throw new ApiError(httpStatus.NOT_EXTENDED, ' issues by the delete admin section')
+    };
 
-      return {
-        status:true ,
-        message:"successfully delete"
-      }
-
+    return {
+      status: true,
+      message: "successfully delete"
     }
-    catch(error){
-      catchError(error);
-    }
+
+  }
+  catch (error) {
+    catchError(error);
+  }
 }
 
 // ============== EXPORT SERVICES ==============
@@ -422,7 +436,7 @@ const AuthServices = {
   deleteAccountIntoDb,
   isBlockAccountIntoDb,
   deleteAdminIntoDb
-  
+
 };
 
 export default AuthServices;

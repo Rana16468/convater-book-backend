@@ -1,188 +1,143 @@
-
-
 import { Schema, model } from "mongoose";
-import { TUser, UserModel } from "./user.interface";
-import { PROVIDER_AUTH, USER_ACCESSIBILITY, USER_ROLE } from "./user.constant";
 import bcrypt from "bcrypt";
+
+import { TUser, UserModel } from "./user.interface";
+import { USER_ACCESSIBILITY, USER_ROLE } from "./user.constant";
 import config from "../../app/config";
 
-// Define the TSales schema
-const TUserSchema = new Schema<TUser, UserModel>({
-
+const userSchema = new Schema<TUser, UserModel>(
+  {
     name: {
-        type: String,
-        required: [true, 'name is Required']
+      type: String,
+      required: true,
+      trim: true,
     },
+
     email: {
-        type: String,
-        index: true,
-        required: [false, 'Email is Not Required']
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
     },
+
     password: {
-        type: String,
-        required: [false, 'password is Required'], select: 0
+      type: String,
+      required: true,
+      select: 0, // hide password by default
     },
+
     photo: {
-        type: String,
-        required: [false, 'photo is Required'],
-        default: null
+      type: String,
+      required:[false, 'photo is not requited'],
+      default: null
     },
+
     role: {
-        type: String,
-        required:[true , 'role is required'],
-        enum: {
-            values: [USER_ROLE.shop, USER_ROLE.user, USER_ROLE.admin, USER_ROLE.superAdmin],
-            message: '{VALUE} is Not Required'
-        },
-        index: true,
-        default: USER_ROLE.user
+      type: String,
+      enum: [USER_ROLE.admin, USER_ROLE.superAdmin,USER_ROLE.shop, USER_ROLE.user],
+      default: USER_ROLE.user
     },
+
     status: {
-        type: String,
-        required:[true, "status is required"],
-        enum: {
-            values: [USER_ACCESSIBILITY.isProgress, USER_ACCESSIBILITY.blocked],
-            message: '{VALUE} is Not Required'
-        },
-        index: true,
-        default: USER_ACCESSIBILITY.isProgress
-
+      type: String,
+      enum: [USER_ACCESSIBILITY.blocked, USER_ACCESSIBILITY.isProgress],
+      default: USER_ACCESSIBILITY.isProgress,
     },
-    provider:{
-        type:String,
-        required:[false , "provider is not required"],
-        enum:{
-            values:[PROVIDER_AUTH.googleAuth],
-             message: '{VALUE} is Not Required'
-        },
-        index: true,
-        default: null
 
-
+    provider: {
+      type: String,
+      enum: ["googleAuth"],
     },
+
     os: {
-        type: String,
-        required: [false, 'os is Required'],
-        default: null
-
+      type: String,
+      required: true,
     },
+
     browser: {
-        type: String,
-        require: [false, 'browser is Required'],
-        default: null
+      type: String,
+      required: true,
     },
     device: {
-        type: String,
-        require: [false, 'device is required'],
-        default: null
+      type: String,
+      required: true,
     },
-    isVerify: {
-        type: Boolean,
-        required: [false, 'Is Verify is required'],
-        index: true,
-        default : false
 
-    },
     verificationCode: {
-        type: String,
-        required: [false, 'verificationCode code is required'], select:0,
-        index: true,
+      type: String,
+      required: false,
     },
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+
+    isVerify: {
+      type: Boolean,
+      default: false,
+    },
+
     ipAddress: {
-        type: String,
-        index: true,
-        required: [false, 'Is Verify is required'],
-        default: null
+      type: String,
+      required: false,
     },
-    publicKey:{
-        type: String,
-        required:[false, ' publicKey is required']
-    },
-    privateKey:{
-        type:String,
-        required:[false , 'privateKey is required']
-
-    },
-
 
     isDelete: {
-        type: Boolean,
-        required: [false, 'isDelete  is not required'],
-        default: false
-    }
-
-}, {
-    timestamps: true
-});
-
-
-
-TUserSchema.set('toJSON', {
-    virtuals: true,
-    transform: function (doc, ret) {
-        delete ret.password;
-        return ret;
+      type: Boolean,
+      default: false,
     },
-});
-// mongoose middleware
-TUserSchema.pre("save", async function (next) {
-  const user = this;
-  if (user.isModified("password")) {
-    user.password = await bcrypt.hash(
-      user.password,
-      Number(config.bcrypt_salt_rounds)
-    );
+  },
+  {
+    timestamps: true,
   }
+);
+// hash password before save
+
+userSchema.set('toJSON', {
+  virtuals: true,
+  transform: function (doc, ret) {
+    delete ret.password;
+    return ret;
+  },
+});
+userSchema.pre("save", async function (next) {
+  const user = this;
+
+  if (!user.isModified("password")) {
+    return next();
+  }
+
+  user.password = await bcrypt.hash(
+    user.password,
+    Number(config.bcrypt_salt_rounds)
+  );
+
   next();
 });
 
-TUserSchema.post("save", function (doc, next) {
-  doc.password = "";
-  next();
-});
 
-
-// midlewere 
-TUserSchema.pre('find', function (next) {
-    this.find({ isDelete: { $ne: true } })
-    next();
-});
-TUserSchema.pre('aggregate', function (next) {
-
-    this.pipeline().unshift({ $match: { isDelete: { $ne: true } } })
-    next();
-});
-TUserSchema.pre('findOne', function (next) {
-
-    this.find({ isDelete: { $ne: true } })
-
-    next();
-});
-
-TUserSchema.statics.isPasswordMatched = async function (
-  plainTextPassword: string,
-  hashPassword: string,
-) {
-  const password = await bcrypt.compare(plainTextPassword, hashPassword);
-  return password;
+// check user exist
+userSchema.statics.isUserExistByCustomId = async function (id: string) {
+  return await this.findById(id).select("+password");
 };
 
-TUserSchema.statics.isJWTIssuesBeforePasswordChange = async function (
+// password match
+userSchema.statics.isPasswordMatched = async function (
+  userSendingPassword: string,
+  existingPassword: string
+) {
+  return await bcrypt.compare(userSendingPassword, existingPassword);
+};
+
+// check if JWT issued before password change
+userSchema.statics.isJWTIssuesBeforePasswordChange = async function (
   passwordChangeTimestamp: Date,
-  jwtIssuesTime: number,
+  jwtIssuesTime: number
 ) {
   const passwordChangeTime = new Date(passwordChangeTimestamp).getTime() / 1000;
   return passwordChangeTime > jwtIssuesTime;
 };
 
-
-
-TUserSchema.statics.isUserExistByCustomId = async function (id: string) {
-    return await users.findById(id).select("");
-}
-
-// Export the model
-
-const users = model<TUser, UserModel>('users', TUserSchema);
-
-export default users;
+const adminusers = model<TUser, UserModel>('adminusers', userSchema);
+export default adminusers;

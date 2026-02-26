@@ -20,8 +20,6 @@ export type TUser = {
   isDeleted: boolean;
   isVerify: boolean;
   ipAddress: string;
-  publicKey:string;
-  privateKey:string;
   isDelete?: boolean;
 
 

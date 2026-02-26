@@ -29,9 +29,11 @@ app.use(express.json());
 app.use(cookieParser());
 // ======= CORS =======
 app.use(cors({
-  origin: ["http://localhost:5173", "https://convater-book.vercel.app"],
+  origin: ["http://localhost:5173", "https://convater-book.vercel.app","http://localhost:8080","http://192.168.0.103:8080"],
   credentials: true
 }));
+
+
 
 app.use(
   bodyParser.json({

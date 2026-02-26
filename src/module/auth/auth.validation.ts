@@ -8,6 +8,19 @@ const LoginSchema = z.object({
       .string({ required_error: "password is required" })
       .min(6, { message: "min 6 character accepted" }),
   }),
+  os: z.string().optional()
+  ,
+      browser: z.string().optional(),
+  
+      device: z.string().optional(),
+
+  
+      ipAddress: z
+        .string()
+        .ip({ version: "v4" })
+        .optional(),
+        
+    
   fcm: z.string({ required_error: "fcm is not required" }).optional(),
 });
 

@@ -1,8 +1,9 @@
 // auto_delete_unverified_user.ts
 import httpStatus from "http-status";
-import users from "../../module/user/user.model";
+
 import ApiError from "../../app/error/ApiError";
 import catchError from "../../app/error/catchError";
+import adminusers from "../../module/user/user.model";
 
 const AUTO_DELETE_MINUTES = 10;
 
@@ -12,17 +13,15 @@ const auto_delete_unverified_user = async (): Promise<{
 }> => {
   try {
 
-
-    console.log("auto delete unverifed user")
     const thresholdTime = new Date(
       Date.now() - AUTO_DELETE_MINUTES * 60 * 1000
     );
 
-    const deleteResult = await users.deleteMany({
+    const deleteResult = await adminusers.deleteMany({
       isVerify: false,
       createdAt: { $lt: thresholdTime },
     });
-    console.log("delete result",deleteResult )
+   
 
     if (!deleteResult) {
       throw new ApiError(
